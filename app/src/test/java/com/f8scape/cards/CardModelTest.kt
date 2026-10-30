@@ -50,5 +50,20 @@ class CardModelTest {
 
         val dashboardFallback = DefaultCardLayouts.deserialize("", fallbackPreset = "Dashboard")
         assertEquals(4, dashboardFallback.size)
+
+        val mediaFallback = DefaultCardLayouts.deserialize("", fallbackPreset = "Media")
+        assertEquals(3, mediaFallback.size)
+        assertEquals(CardType.CLOCK, mediaFallback[0].type)
+        assertEquals(CardType.MEDIA, mediaFallback[1].type)
+        assertEquals(CardType.BATTERY, mediaFallback[2].type)
+    }
+
+    @Test
+    fun getMediaLayout_containsClockMediaAndBattery() {
+        val layout = DefaultCardLayouts.getMediaLayout()
+        assertEquals(3, layout.size)
+        assertEquals(CardType.CLOCK, layout[0].type)
+        assertEquals(CardType.MEDIA, layout[1].type)
+        assertEquals(CardType.BATTERY, layout[2].type)
     }
 }

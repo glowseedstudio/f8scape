@@ -395,6 +395,12 @@ private fun RenderCard(
             onMoveDown = onMoveDown,
             onRemove = onRemove
         )
+        CardType.MEDIA -> AmbientMediaCard(
+            isEditMode = isEditMode,
+            onMoveUp = onMoveUp,
+            onMoveDown = onMoveDown,
+            onRemove = onRemove
+        )
         CardType.SPACER -> Spacer(modifier = Modifier.height(16.dp))
     }
 }

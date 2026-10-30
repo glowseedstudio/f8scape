@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.f8scape.app.theme.*
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
+import com.f8scape.media.F8MediaNotificationListener
 import com.f8scape.service.CoverOverlayService
 import kotlinx.coroutines.launch
 
@@ -213,6 +214,24 @@ fun SettingsScreen(
                         colors = SliderDefaults.colors(thumbColor = AccentBlue, activeTrackColor = AccentBlue)
                     )
                     Text("Controls the F8scape window brightness without altering your system brightness settings.", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Ambient Ken Burns Artwork", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                            Text("Slow, subtle zoom and pan of active album cover art with low-luminance OLED dimming", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.kenBurnsEnabled,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setKenBurnsEnabled(it) } },
+                            colors = SwitchDefaults.colors(checkedThumbColor = PureBlack, checkedTrackColor = AccentBlue)
+                        )
+                    }
                 }
             }
 
@@ -278,6 +297,38 @@ fun SettingsScreen(
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(if (isOverlayGranted) "Config" else "Grant", color = AccentBlue, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    val isMediaAccessGranted = F8MediaNotificationListener.isNotificationAccessGranted(context)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Media Session Access", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                            Text(
+                                text = if (isMediaAccessGranted) "Granted & active" else "Not granted (Required to read Spotify / YouTube Music playback & artwork)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isMediaAccessGranted) StatusSuccess else StatusWarning
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(if (isMediaAccessGranted) "Config" else "Grant", color = AccentBlue, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(Icons.Default.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
                         }

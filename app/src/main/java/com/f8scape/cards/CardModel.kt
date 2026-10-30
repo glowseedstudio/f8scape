@@ -8,6 +8,7 @@ enum class CardType(val displayName: String, val defaultTitle: String) {
     WEATHER("Weather Conditions", "Weather"),
     BATTERY("Battery & Charging", "Battery"),
     CALENDAR("Upcoming Events", "Calendar"),
+    MEDIA("Now Playing", "Media"),
     SPACER("Ambient Spacer", "Spacer")
 }
 
@@ -34,6 +35,7 @@ object DefaultCardLayouts {
 
     fun getMediaLayout(): List<CardItem> = listOf(
         CardItem(id = "clock_main", type = CardType.CLOCK),
+        CardItem(id = "media_card", type = CardType.MEDIA),
         CardItem(id = "battery_card", type = CardType.BATTERY)
     )
 

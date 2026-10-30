@@ -19,6 +19,7 @@ import com.f8scape.cards.CardItem
 import com.f8scape.cards.DefaultCardLayouts
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
+import com.f8scape.media.MediaPlaybackRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -76,14 +77,27 @@ fun StandbyDashboard(
         label = "OledBurnInDrift"
     )
 
+    val trackInfo by MediaPlaybackRepository.mediaTrackState.collectAsState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(PureBlack)
-            .padding(18.dp)
-            .offset { animatedBurnInOffset }
     ) {
-        // Exit tap target (subtle X button) in top right
+        // Ken Burns Ambient Artwork Background (dimmed edge-to-edge behind floating elements)
+        KenBurnsBackground(
+            artwork = trackInfo.artwork,
+            isEnabled = preferences.kenBurnsEnabled && trackInfo.isPlaying
+        )
+
+        // Floating ambient content with 8-point orbital burn-in drift
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(18.dp)
+                .offset { animatedBurnInOffset }
+        ) {
+            // Exit tap target (subtle X button) in top right
         if (!isEditMode) {
             IconButton(
                 onClick = onDismissRequest,
@@ -156,4 +170,5 @@ fun StandbyDashboard(
             )
         }
     }
+}
 }
