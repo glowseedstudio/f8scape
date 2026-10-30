@@ -90,6 +90,15 @@ fun StandbyDashboard(
             isEnabled = preferences.kenBurnsEnabled && trackInfo.isPlaying
         )
 
+        // Ambient dimming scrim (edge-to-edge fullscreen, eliminates darker inset box)
+        if (preferences.screenDimLevel < 0.8f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(PureBlack.copy(alpha = (1.0f - preferences.screenDimLevel) * 0.45f))
+            )
+        }
+
         // Floating ambient content with 8-point orbital burn-in drift
         Box(
             modifier = Modifier
@@ -98,77 +107,68 @@ fun StandbyDashboard(
                 .offset { animatedBurnInOffset }
         ) {
             // Exit tap target (subtle X button) in top right
-        if (!isEditMode) {
-            IconButton(
-                onClick = onDismissRequest,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .alpha(0.6f)
-            ) {
-                Icon(Icons.Default.Close, contentDescription = "Close StandBy", tint = TextTertiary)
-            }
-        }
-
-        // Snap-to-Grid Card Engine
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = if (isEditMode) 0.dp else 24.dp, bottom = 28.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            DashboardGridEngine(
-                cards = localCards,
-                currentTimeMs = currentTimeMs,
-                weatherCity = preferences.weatherCity,
-                maskCalendar = preferences.calendarMaskLocked,
-                isEditMode = isEditMode,
-                onEnterEditMode = { isEditMode = true },
-                onUpdateCards = { updated ->
-                    localCards = updated
-                    coroutineScope.launch {
-                        preferencesRepo.setCustomLayout(DefaultCardLayouts.serialize(updated))
-                    }
-                },
-                onDoneEdit = { isEditMode = false },
-                onResetDefaults = {
-                    val defaultList = when (preferences.activePreset) {
-                        "Minimal" -> DefaultCardLayouts.getMinimalLayout()
-                        "Media" -> DefaultCardLayouts.getMediaLayout()
-                        else -> DefaultCardLayouts.getDashboardLayout()
-                    }
-                    localCards = defaultList
-                    coroutineScope.launch {
-                        preferencesRepo.setCustomLayout("")
-                    }
+            if (!isEditMode) {
+                IconButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .alpha(0.6f)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Close StandBy", tint = TextTertiary)
                 }
-            )
-        }
+            }
 
-        // Bottom ambient hint
-        if (!isEditMode) {
-            Text(
-                text = "F8scape · Long press to customize · Double tap to exit",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextTertiary,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .alpha(0.45f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismissRequest
-                    )
-            )
-        }
-
-        // Ambient dimming scrim
-        if (preferences.screenDimLevel < 0.8f) {
+            // Snap-to-Grid Card Engine
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(PureBlack.copy(alpha = (1.0f - preferences.screenDimLevel) * 0.45f))
-            )
+                    .padding(top = if (isEditMode) 0.dp else 24.dp, bottom = 28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                DashboardGridEngine(
+                    cards = localCards,
+                    currentTimeMs = currentTimeMs,
+                    weatherCity = preferences.weatherCity,
+                    maskCalendar = preferences.calendarMaskLocked,
+                    isEditMode = isEditMode,
+                    onEnterEditMode = { isEditMode = true },
+                    onUpdateCards = { updated ->
+                        localCards = updated
+                        coroutineScope.launch {
+                            preferencesRepo.setCustomLayout(DefaultCardLayouts.serialize(updated))
+                        }
+                    },
+                    onDoneEdit = { isEditMode = false },
+                    onResetDefaults = {
+                        val defaultList = when (preferences.activePreset) {
+                            "Minimal" -> DefaultCardLayouts.getMinimalLayout()
+                            "Media" -> DefaultCardLayouts.getMediaLayout()
+                            else -> DefaultCardLayouts.getDashboardLayout()
+                        }
+                        localCards = defaultList
+                        coroutineScope.launch {
+                            preferencesRepo.setCustomLayout("")
+                        }
+                    }
+                )
+            }
+
+            // Bottom ambient hint
+            if (!isEditMode) {
+                Text(
+                    text = "F8scape · Long press to customize · Double tap to exit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextTertiary,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .alpha(0.45f)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onDismissRequest
+                        )
+                )
+            }
         }
     }
-}
 }

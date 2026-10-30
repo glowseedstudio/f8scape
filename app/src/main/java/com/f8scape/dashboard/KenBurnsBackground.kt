@@ -6,8 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
@@ -20,7 +19,8 @@ import com.f8scape.app.theme.PureBlack
 /**
  * Ambient Ken Burns Artwork Background.
  * Renders album artwork with slow, subtle pan and zoom animation (45-60s loop),
- * heavy dimming, and deep vignette to guarantee OLED black dominance and zero burn-in.
+ * smooth 1.2s crossfade between song transitions, and a deep ambient vignette
+ * to guarantee OLED black dominance and zero burn-in.
  */
 @Composable
 fun KenBurnsBackground(
@@ -28,13 +28,38 @@ fun KenBurnsBackground(
     isEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
-    if (!isEnabled || artwork == null) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(PureBlack)
+    // Current and outgoing previous artwork for seamless crossfade
+    var currentBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var previousBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val crossfadeProgress = remember { Animatable(1f) }
+
+    val shouldDisplay = isEnabled && artwork != null
+    val targetVisibility = if (shouldDisplay) 1f else 0f
+    val masterAlpha = remember { Animatable(0f) }
+
+    // Smooth master fade in/out when playback starts or stops
+    LaunchedEffect(targetVisibility) {
+        masterAlpha.animateTo(
+            targetValue = targetVisibility,
+            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
         )
-        return
+    }
+
+    // Smooth crossfade between songs
+    LaunchedEffect(artwork) {
+        if (artwork != null && artwork != currentBitmap) {
+            previousBitmap = currentBitmap
+            currentBitmap = artwork
+            crossfadeProgress.snapTo(0f)
+            crossfadeProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 1200, easing = LinearEasing)
+            )
+            previousBitmap = null
+        } else if (artwork == null) {
+            currentBitmap = null
+            previousBitmap = null
+        }
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "KenBurnsTransition")
@@ -77,36 +102,62 @@ fun KenBurnsBackground(
             .fillMaxSize()
             .background(PureBlack)
     ) {
-        // Animated artwork layer with enhanced ambient visibility (55% opacity)
-        Image(
-            bitmap = artwork.asImageBitmap(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    this.translationX = translationX
-                    this.translationY = translationY
-                }
-                .alpha(0.55f)
-        )
+        val vis = masterAlpha.value
+        if (vis > 0.01f) {
+            // Outgoing song artwork fading out
+            val prev = previousBitmap
+            val progress = crossfadeProgress.value
+            if (prev != null && progress < 1f) {
+                Image(
+                    bitmap = prev.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            this.translationX = translationX
+                            this.translationY = translationY
+                        }
+                        .alpha((1f - progress) * 0.55f * vis)
+                )
+            }
 
-        // Soft ambient vignette to smoothly fade extreme outer edges while keeping artwork clearly visible
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Transparent,
-                            PureBlack.copy(alpha = 0.40f),
-                            PureBlack.copy(alpha = 0.80f)
+            // Incoming song artwork fading in
+            val current = currentBitmap
+            if (current != null) {
+                Image(
+                    bitmap = current.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            this.translationX = translationX
+                            this.translationY = translationY
+                        }
+                        .alpha(progress * 0.55f * vis)
+                )
+            }
+
+            // Fullscreen soft ambient vignette
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Transparent,
+                                PureBlack.copy(alpha = 0.40f),
+                                PureBlack.copy(alpha = 0.80f)
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
     }
 }
