@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.f8scape.app.theme.*
+import com.f8scape.cards.CalendarStyle
 import com.f8scape.cards.ClockColorOption
 import com.f8scape.cards.ClockStyle
 import com.f8scape.cards.F8ClockFace
@@ -79,7 +80,7 @@ fun SettingsScreen(
         }
     }
 
-    val oneUiSwitchColors = SwitchDefaults.colors(
+    val defaultSwitchColors = SwitchDefaults.colors(
         checkedThumbColor = Color.White,
         checkedTrackColor = SamsungBlue,
         uncheckedThumbColor = Color(0xFF9E9EA4),
@@ -87,7 +88,7 @@ fun SettingsScreen(
         uncheckedBorderColor = Color.Transparent
     )
 
-    val oneUiSliderColors = SliderDefaults.colors(
+    val defaultSliderColors = SliderDefaults.colors(
         thumbColor = Color.White,
         activeTrackColor = SamsungBlue,
         inactiveTrackColor = Color(0xFF323236)
@@ -117,7 +118,7 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Samsung One UI Large Header Banner
+            // Large Header Banner
             item {
                 Column(
                     modifier = Modifier
@@ -155,7 +156,7 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.isAutoStandbyEnabled,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setAutoStandbyEnabled(it) } },
-                            colors = oneUiSwitchColors
+                            colors = defaultSwitchColors
                         )
                     }
 
@@ -173,7 +174,7 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.onlyWhileCharging,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setOnlyWhileCharging(it) } },
-                            colors = oneUiSwitchColors
+                            colors = defaultSwitchColors
                         )
                     }
 
@@ -185,7 +186,7 @@ fun SettingsScreen(
                         onValueChange = { coroutineScope.launch { preferencesRepository.setDwellTimeMs(it.toLong()) } },
                         valueRange = 800f..2000f,
                         steps = 5,
-                        colors = oneUiSliderColors
+                        colors = defaultSliderColors
                     )
                 }
             }
@@ -228,7 +229,7 @@ fun SettingsScreen(
                         value = preferences.contentBrightness,
                         onValueChange = { coroutineScope.launch { preferencesRepository.setContentBrightness(it) } },
                         valueRange = 0.15f..1.0f,
-                        colors = oneUiSliderColors
+                        colors = defaultSliderColors
                     )
                     Text("Adjusts brightness of the white time numerals, text, and cards independently of the background. Also adjustable by dragging up/down along the left screen edge.", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
 
@@ -240,7 +241,7 @@ fun SettingsScreen(
                         value = preferences.screenDimLevel,
                         onValueChange = { coroutineScope.launch { preferencesRepository.setScreenDimLevel(it) } },
                         valueRange = 0.05f..1.0f,
-                        colors = oneUiSliderColors
+                        colors = defaultSliderColors
                     )
                     Text("Controls the F8scape window brightness without altering your system brightness settings.", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
 
@@ -259,7 +260,7 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.kenBurnsEnabled,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setKenBurnsEnabled(it) } },
-                            colors = oneUiSwitchColors
+                            colors = defaultSwitchColors
                         )
                     }
 
@@ -278,7 +279,7 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.showWallpaperBackground,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowWallpaperBackground(it) } },
-                            colors = oneUiSwitchColors
+                            colors = defaultSwitchColors
                         )
                     }
 
@@ -434,6 +435,100 @@ fun SettingsScreen(
                 }
             }
 
+            // Calendar Studio & Styles Section (100% synced with Dashboard & Full-Screen Calendar)
+            item {
+                var localCalStyleId by remember(preferences.calendarStyle) { mutableStateOf(preferences.calendarStyle) }
+                var localCalColorId by remember(preferences.calendarColorId) { mutableStateOf(preferences.calendarColorId) }
+                val activeCalStyle = remember(localCalStyleId) { CalendarStyle.fromId(localCalStyleId) }
+                val activeCalColor = remember(localCalColorId) { ClockColorOption.fromCalendarDefault(localCalColorId) }
+
+                SectionCard(title = "Calendar Studio & Styles") {
+                    Text(
+                        text = "Synced across Home Screen Calendar Card & Full-Screen Calendar. Tip: Touch and hold the Full-Screen Calendar in StandBy to open the live editor.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text("Calendar Layout Style", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text(activeCalStyle.subtitle, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(CalendarStyle.entries, key = { it.id }) { style ->
+                            val isSelected = style == activeCalStyle
+                            Surface(
+                                onClick = {
+                                    localCalStyleId = style.id
+                                    coroutineScope.launch { preferencesRepository.setCalendarStyle(style.id) }
+                                },
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f))
+                            ) {
+                                Text(
+                                    text = style.displayName,
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Calendar Colour", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                        Text(activeCalColor.displayName, style = MaterialTheme.typography.bodyMedium, color = activeCalColor.color, fontWeight = FontWeight.SemiBold)
+                    }
+                    Text("Accent colour for month headers, weekend labels, today marker, and event dots", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        items(ClockColorOption.entries, key = { it.id }) { option ->
+                            val isSelected = option == activeCalColor
+                            Surface(
+                                onClick = {
+                                    localCalColorId = option.id
+                                    coroutineScope.launch { preferencesRepository.setCalendarColorId(option.id) }
+                                },
+                                shape = CircleShape,
+                                color = option.color,
+                                border = BorderStroke(
+                                    width = if (isSelected) 2.5.dp else 1.dp,
+                                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.25f)
+                                ),
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = option.displayName,
+                                            tint = if (option == ClockColorOption.PURE_WHITE || option.isPastel) Color.Black else Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Native Cards & Integrations Section
             item {
                 SectionCard(title = "Native Cards & Integrations") {
@@ -475,7 +570,7 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.showWeather,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowWeather(it) } },
-                            colors = oneUiSwitchColors
+                            colors = defaultSwitchColors
                         )
                     }
 
@@ -494,7 +589,7 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.showBattery,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowBattery(it) } },
-                            colors = oneUiSwitchColors
+                            colors = defaultSwitchColors
                         )
                     }
 
@@ -550,7 +645,7 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.calendarMaskLocked,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setCalendarMaskLocked(it) } },
-                            colors = oneUiSwitchColors
+                            colors = defaultSwitchColors
                         )
                     }
 

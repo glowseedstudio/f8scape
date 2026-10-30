@@ -44,7 +44,7 @@ fun F8ClockFace(
     modifier: Modifier = Modifier
 ) {
     when (style) {
-        ClockStyle.ONE_UI_MODERN -> {
+        ClockStyle.DEFAULT -> {
             Text(
                 text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = false),
                 fontSize = when {
@@ -75,9 +75,9 @@ fun F8ClockFace(
 
         ClockStyle.CHRONO_ANALOG -> {
             val dialSize = when {
-                isFullScreen -> 210.dp
-                isLarge -> 158.dp
-                else -> 124.dp
+                isFullScreen -> 264.dp
+                isLarge -> 196.dp
+                else -> 152.dp
             }
             HorologyAnalogClock(
                 currentTimeMs = currentTimeMs,
@@ -438,3 +438,123 @@ fun LiveClockEditorPanel(
         }
     }
 }
+
+/**
+ * Interactive Live Calendar Studio Editor overlay triggered by touching & holding the Full Calendar.
+ * Changes made here immediately sync via PreferencesRepository across the Home Card, Full Calendar, and Settings.
+ */
+@Composable
+fun LiveCalendarEditorPanel(
+    selectedStyle: CalendarStyle,
+    selectedColor: ClockColorOption,
+    onSelectStyle: (CalendarStyle) -> Unit,
+    onSelectColor: (ClockColorOption) -> Unit,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFF141418).copy(alpha = 0.96f))
+            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "CALENDAR STUDIO · ${selectedStyle.displayName.uppercase()} · ${selectedColor.displayName.uppercase()}",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.4.sp,
+                color = Color.White.copy(alpha = 0.70f)
+            )
+            Surface(
+                onClick = onDone,
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFF2E75D3)
+            ) {
+                Text(
+                    text = "Done",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Calendar Style Selector Pills
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(CalendarStyle.entries, key = { it.id }) { style ->
+                val isSelected = style == selectedStyle
+                Surface(
+                    onClick = { onSelectStyle(style) },
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (isSelected) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) selectedColor.color else Color.White.copy(alpha = 0.12f)
+                    )
+                ) {
+                    Text(
+                        text = style.displayName,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.70f),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Color Palette Swatches
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items(ClockColorOption.entries, key = { it.id }) { option ->
+                val isSelected = option == selectedColor
+                Surface(
+                    onClick = { onSelectColor(option) },
+                    shape = CircleShape,
+                    color = option.color,
+                    border = BorderStroke(
+                        width = if (isSelected) 2.5.dp else 1.dp,
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.25f)
+                    ),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (isSelected) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = option.displayName,
+                                tint = if (option == ClockColorOption.PURE_WHITE || option.isPastel) Color.Black else Color.White,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

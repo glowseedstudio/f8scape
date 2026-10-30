@@ -30,8 +30,8 @@ import com.f8scape.media.SquigglyProgressBar
 import com.f8scape.util.TimeUtils
 
 /**
- * Ambient native media card styled after the Samsung One UI system player,
- * featuring squircle artwork, seek progress, and clean monochrome transport controls.
+ * Ambient native media card featuring squircle artwork,
+ * seek progress, and clean monochrome transport controls.
  */
 @Composable
 fun AmbientMediaCard(
@@ -135,13 +135,13 @@ fun AmbientMediaCard(
                         }
                     }
                 } else {
-                    // Active media state: Samsung One UI system player layout
+                    // Active media state
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Album Artwork (One UI squircle)
+                        // Album Artwork (squircle)
                         if (trackInfo.artwork != null) {
                             Image(
                                 bitmap = trackInfo.artwork!!.asImageBitmap(),

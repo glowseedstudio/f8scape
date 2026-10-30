@@ -140,7 +140,7 @@ fun AmbientClockCard(
     weatherCity: String = "Canberra",
     showWeather: Boolean = true,
     showBattery: Boolean = true,
-    clockStyleId: String = "ONE_UI_MODERN",
+    clockStyleId: String = "DEFAULT",
     clockColorId: String = "PURE_WHITE",
     isLarge: Boolean = true,
     isEditMode: Boolean = false,
@@ -422,6 +422,8 @@ fun AmbientBatteryCard(
 @Composable
 fun AmbientCalendarCard(
     maskTitle: Boolean = false,
+    calendarStyleId: String = "DEFAULT",
+    calendarColorId: String = "SIGNATURE_BLUE",
     isEditMode: Boolean = false,
     onDayClick: (year: Int, month: Int, day: Int) -> Unit = { _, _, _ -> },
     onMonthClick: () -> Unit = {},
@@ -453,6 +455,9 @@ fun AmbientCalendarCard(
     val monthName = remember(currentMonth) {
         SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(now.time).uppercase()
     }
+
+    val resolvedStyle = remember(calendarStyleId) { CalendarStyle.fromId(calendarStyleId) }
+    val resolvedColor = remember(calendarColorId) { ClockColorOption.fromCalendarDefault(calendarColorId).color }
 
     val weekDays = listOf("M", "T", "W", "T", "F", "S", "S")
 
@@ -504,15 +509,15 @@ fun AmbientCalendarCard(
                     Text(
                         text = monthName,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White.copy(alpha = 0.85f),
+                        fontWeight = FontWeight.Bold,
+                        color = resolvedColor,
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Expand Calendar",
-                        tint = Color.White.copy(alpha = 0.45f),
+                        tint = resolvedColor.copy(alpha = 0.65f),
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -532,12 +537,13 @@ fun AmbientCalendarCard(
                     .padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                weekDays.forEach { dayName ->
+                weekDays.forEachIndexed { index, dayName ->
+                    val isWeekend = index >= 5
                     Text(
                         text = dayName,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = 0.40f),
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isWeekend) resolvedColor.copy(alpha = 0.70f) else Color.White.copy(alpha = 0.45f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.weight(1f)
                     )
@@ -562,56 +568,16 @@ fun AmbientCalendarCard(
                                 val dayEvents = eventsByDay[dayNum]
                                 val hasEvents = !dayEvents.isNullOrEmpty()
 
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(28.dp)
-                                        .clip(CircleShape)
-                                        .clickable {
-                                            onDayClick(currentYear, currentMonth, dayNum)
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (isToday) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(20.dp)
-                                                .background(Color.White, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = dayNum.toString(),
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = PureBlack,
-                                                textAlign = TextAlign.Center
-                                            )
-                                        }
-                                    } else {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            Text(
-                                                text = dayNum.toString(),
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Normal,
-                                                color = Color.White.copy(alpha = 0.85f),
-                                                textAlign = TextAlign.Center
-                                            )
-                                            if (hasEvents) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .padding(top = 1.5.dp)
-                                                        .size(2.5.dp)
-                                                        .background(Color.White.copy(alpha = 0.85f), CircleShape)
-                                                )
-                                            } else {
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                            }
-                                        }
-                                    }
-                                }
+                                StyledCalendarDayCell(
+                                    dayNum = dayNum,
+                                    isToday = isToday,
+                                    hasEvents = hasEvents,
+                                    style = resolvedStyle,
+                                    accentColor = resolvedColor,
+                                    isCompact = true,
+                                    onClick = { onDayClick(currentYear, currentMonth, dayNum) },
+                                    modifier = Modifier.weight(1f)
+                                )
                             } else {
                                 Spacer(modifier = Modifier.weight(1f))
                             }

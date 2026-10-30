@@ -36,8 +36,10 @@ fun DashboardGridEngine(
     weatherCity: String = "Canberra",
     showWeather: Boolean = true,
     showBattery: Boolean = true,
-    clockStyleId: String = "ONE_UI_MODERN",
+    clockStyleId: String = "DEFAULT",
     clockColorId: String = "PURE_WHITE",
+    calendarStyleId: String = "DEFAULT",
+    calendarColorId: String = "SIGNATURE_BLUE",
     maskCalendar: Boolean = false,
     isEditMode: Boolean = false,
     onEnterEditMode: () -> Unit = {},
@@ -64,7 +66,7 @@ fun DashboardGridEngine(
         val isLandscape = maxWidth > 550.dp
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // Edit mode toolbar: Frosted Samsung One UI aesthetic
+            // Edit mode toolbar: Frosted dark OLED aesthetic
             if (isEditMode) {
                 Surface(
                     color = Color(0xCC18181A),
@@ -115,7 +117,7 @@ fun DashboardGridEngine(
                                 Icon(Icons.Default.Refresh, contentDescription = "Reset", tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
                             }
 
-                            // Done Button: Samsung One UI style pure white pill with black text
+                            // Done Button: Default pure white pill with black text
                             Button(
                                 onClick = onDoneEdit,
                                 colors = ButtonDefaults.buttonColors(
@@ -189,6 +191,8 @@ fun DashboardGridEngine(
                                     showBattery = showBattery,
                                     clockStyleId = clockStyleId,
                                     clockColorId = clockColorId,
+                                    calendarStyleId = calendarStyleId,
+                                    calendarColorId = calendarColorId,
                                     maskCalendar = maskCalendar,
                                     isEditMode = isEditMode,
                                     onMoveUp = if (index > 0) {
@@ -235,6 +239,8 @@ fun DashboardGridEngine(
                                     showBattery = showBattery,
                                     clockStyleId = clockStyleId,
                                     clockColorId = clockColorId,
+                                    calendarStyleId = calendarStyleId,
+                                    calendarColorId = calendarColorId,
                                     maskCalendar = maskCalendar,
                                     isEditMode = isEditMode,
                                     onRemove = if (cards.size > 1) {
@@ -264,6 +270,8 @@ fun DashboardGridEngine(
                             showBattery = showBattery,
                             clockStyleId = clockStyleId,
                             clockColorId = clockColorId,
+                            calendarStyleId = calendarStyleId,
+                            calendarColorId = calendarColorId,
                             maskCalendar = maskCalendar,
                             isEditMode = isEditMode,
                             onMoveUp = if (index > 0) {
@@ -427,8 +435,10 @@ private fun RenderCard(
     weatherCity: String,
     showWeather: Boolean = true,
     showBattery: Boolean = true,
-    clockStyleId: String = "ONE_UI_MODERN",
+    clockStyleId: String = "DEFAULT",
     clockColorId: String = "PURE_WHITE",
+    calendarStyleId: String = "DEFAULT",
+    calendarColorId: String = "SIGNATURE_BLUE",
     maskCalendar: Boolean,
     isEditMode: Boolean,
     onMoveUp: (() -> Unit)? = null,
@@ -469,6 +479,8 @@ private fun RenderCard(
         )
         CardType.CALENDAR -> AmbientCalendarCard(
             maskTitle = maskCalendar,
+            calendarStyleId = calendarStyleId,
+            calendarColorId = calendarColorId,
             isEditMode = isEditMode,
             onDayClick = { year, month, day ->
                 onSelectCalendarDay?.invoke(year, month, day)

@@ -29,8 +29,10 @@ data class UserPreferences(
     val contentBrightness: Float = 1.0f,
     val showWeather: Boolean = true,
     val showBattery: Boolean = true,
-    val clockStyle: String = "ONE_UI_MODERN",
-    val clockColorId: String = "PURE_WHITE"
+    val clockStyle: String = "DEFAULT",
+    val clockColorId: String = "PURE_WHITE",
+    val calendarStyle: String = "DEFAULT",
+    val calendarColorId: String = "SIGNATURE_BLUE"
 )
 
 class PreferencesRepository(
@@ -55,6 +57,8 @@ class PreferencesRepository(
         val SHOW_BATTERY = booleanPreferencesKey("show_battery")
         val CLOCK_STYLE = stringPreferencesKey("clock_style")
         val CLOCK_COLOR_ID = stringPreferencesKey("clock_color_id")
+        val CALENDAR_STYLE = stringPreferencesKey("calendar_style")
+        val CALENDAR_COLOR_ID = stringPreferencesKey("calendar_color_id")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -83,8 +87,10 @@ class PreferencesRepository(
                 contentBrightness = preferences[PreferencesKeys.CONTENT_BRIGHTNESS] ?: 1.0f,
                 showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: true,
                 showBattery = preferences[PreferencesKeys.SHOW_BATTERY] ?: true,
-                clockStyle = preferences[PreferencesKeys.CLOCK_STYLE] ?: "ONE_UI_MODERN",
-                clockColorId = preferences[PreferencesKeys.CLOCK_COLOR_ID] ?: "PURE_WHITE"
+                clockStyle = preferences[PreferencesKeys.CLOCK_STYLE] ?: "DEFAULT",
+                clockColorId = preferences[PreferencesKeys.CLOCK_COLOR_ID] ?: "PURE_WHITE",
+                calendarStyle = preferences[PreferencesKeys.CALENDAR_STYLE] ?: "DEFAULT",
+                calendarColorId = preferences[PreferencesKeys.CALENDAR_COLOR_ID] ?: "SIGNATURE_BLUE"
             )
         }
 
@@ -185,6 +191,18 @@ class PreferencesRepository(
     suspend fun setClockColorId(colorId: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CLOCK_COLOR_ID] = colorId
+        }
+    }
+
+    suspend fun setCalendarStyle(styleId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CALENDAR_STYLE] = styleId
+        }
+    }
+
+    suspend fun setCalendarColorId(colorId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CALENDAR_COLOR_ID] = colorId
         }
     }
 }

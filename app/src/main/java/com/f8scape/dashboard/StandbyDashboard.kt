@@ -61,13 +61,16 @@ import androidx.compose.ui.unit.sp
 import com.f8scape.app.theme.*
 import com.f8scape.cards.CalendarDataProvider
 import com.f8scape.cards.CalendarEventInfo
+import com.f8scape.cards.CalendarStyle
 import com.f8scape.cards.CardItem
 import com.f8scape.cards.CardType
 import com.f8scape.cards.ClockColorOption
 import com.f8scape.cards.ClockStyle
 import com.f8scape.cards.DefaultCardLayouts
 import com.f8scape.cards.F8ClockFace
+import com.f8scape.cards.LiveCalendarEditorPanel
 import com.f8scape.cards.LiveClockEditorPanel
+import com.f8scape.cards.StyledCalendarDayCell
 import com.f8scape.cards.WeatherDataProvider
 import com.f8scape.cards.WeatherInfo
 import com.f8scape.data.PreferencesRepository
@@ -111,6 +114,7 @@ fun StandbyDashboard(
     var lastInteractionTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isEditMode by remember { mutableStateOf(false) }
     var isClockEditorOpen by remember { mutableStateOf(false) }
+    var isCalendarEditorOpen by remember { mutableStateOf(false) }
     var isPagedMode by remember { mutableStateOf(false) }
     var selectedCalendarDay by remember { mutableStateOf<CalendarDaySelection?>(null) }
     var localContentBrightness by remember {
@@ -134,6 +138,8 @@ fun StandbyDashboard(
     var localCards by remember(currentCards) { mutableStateOf(currentCards) }
     var localClockStyle by remember(preferences.clockStyle) { mutableStateOf(preferences.clockStyle) }
     var localClockColorId by remember(preferences.clockColorId) { mutableStateOf(preferences.clockColorId) }
+    var localCalendarStyle by remember(preferences.calendarStyle) { mutableStateOf(preferences.calendarStyle) }
+    var localCalendarColorId by remember(preferences.calendarColorId) { mutableStateOf(preferences.calendarColorId) }
 
     // Periodic second/minute tick
     LaunchedEffect(Unit) {
@@ -357,6 +363,7 @@ fun StandbyDashboard(
                             ExpandedCalendarView(
                                 selection = selection,
                                 maskTitle = preferences.calendarMaskLocked,
+                                calendarColorId = localCalendarColorId,
                                 onDoubleTap = onDismissRequest,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -372,7 +379,7 @@ fun StandbyDashboard(
                         ) {
                             HorizontalPager(
                                 state = pagerState,
-                                userScrollEnabled = !isClockEditorOpen,
+                                userScrollEnabled = !isClockEditorOpen && !isCalendarEditorOpen,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(bottom = if (availablePages.size > 1) 22.dp else 0.dp)
@@ -408,6 +415,19 @@ fun StandbyDashboard(
                                             },
                                             isDimmed = isIdleDimmed,
                                             maskTitle = preferences.calendarMaskLocked,
+                                            calendarStyleId = localCalendarStyle,
+                                            calendarColorId = localCalendarColorId,
+                                            isCalendarEditorOpen = isCalendarEditorOpen,
+                                            onOpenCalendarEditor = { isCalendarEditorOpen = true },
+                                            onCloseCalendarEditor = { isCalendarEditorOpen = false },
+                                            onSelectCalendarStyle = { style ->
+                                                localCalendarStyle = style.id
+                                                coroutineScope.launch { preferencesRepo.setCalendarStyle(style.id) }
+                                            },
+                                            onSelectCalendarColor = { color ->
+                                                localCalendarColorId = color.id
+                                                coroutineScope.launch { preferencesRepo.setCalendarColorId(color.id) }
+                                            },
                                             onDoubleTap = onDismissRequest,
                                             modifier = Modifier.fillMaxSize()
                                         )
@@ -423,8 +443,8 @@ fun StandbyDashboard(
                                 }
                             }
 
-                            // Subtle Samsung One UI pill page indicator at the bottom
-                            if (availablePages.size > 1 && !isClockEditorOpen) {
+                            // Subtle pill page indicator at the bottom
+                            if (availablePages.size > 1 && !isClockEditorOpen && !isCalendarEditorOpen) {
                                 Row(
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
@@ -464,6 +484,8 @@ fun StandbyDashboard(
                                 showBattery = preferences.showBattery,
                                 clockStyleId = localClockStyle,
                                 clockColorId = localClockColorId,
+                                calendarStyleId = localCalendarStyle,
+                                calendarColorId = localCalendarColorId,
                                 maskCalendar = preferences.calendarMaskLocked,
                                 isEditMode = isEditMode,
                                 onEnterEditMode = { isEditMode = true },
@@ -519,7 +541,7 @@ fun StandbyDashboard(
         }
 
         // Narrow left-edge gesture strip for vertical drag brightness control (disabled when editing)
-        if (!isEditMode && !isClockEditorOpen) {
+        if (!isEditMode && !isClockEditorOpen && !isCalendarEditorOpen) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
@@ -755,12 +777,14 @@ private fun ExpandedMusicView(
 private fun ExpandedCalendarView(
     selection: CalendarDaySelection,
     maskTitle: Boolean = false,
+    calendarColorId: String = "SIGNATURE_BLUE",
     onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val calendarProvider = remember { CalendarDataProvider(context) }
     var events by remember { mutableStateOf<List<CalendarEventInfo>>(emptyList()) }
+    val resolvedColor = remember(calendarColorId) { ClockColorOption.fromCalendarDefault(calendarColorId).color }
 
     LaunchedEffect(selection) {
         events = calendarProvider.getEventsForDay(selection.year, selection.month, selection.day, maskTitle)
@@ -808,7 +832,7 @@ private fun ExpandedCalendarView(
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
-                    color = AccentBlue
+                    color = resolvedColor
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -883,7 +907,7 @@ private fun ExpandedCalendarView(
                                 text = timeStr,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = AccentBlue
+                                color = resolvedColor
                             )
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
@@ -923,14 +947,22 @@ private fun ExpandedCalendarView(
 
 /**
  * Expanded full-month ambient calendar view:
- * Displays a spacious, elegant One UI month grid with M T W T F S S,
- * centered today circle, event dots, and direct tap-to-agenda transitions.
+ * Displays a spacious, customizable month grid with M T W T F S S,
+ * styled today indicator, event dots, direct tap-to-agenda transitions,
+ * and touch-and-hold Live Calendar Studio editor.
  */
 @Composable
 private fun ExpandedMonthCalendarView(
     onDayClick: (year: Int, month: Int, day: Int) -> Unit,
     isDimmed: Boolean = false,
     maskTitle: Boolean = false,
+    calendarStyleId: String = "DEFAULT",
+    calendarColorId: String = "SIGNATURE_BLUE",
+    isCalendarEditorOpen: Boolean = false,
+    onOpenCalendarEditor: () -> Unit = {},
+    onCloseCalendarEditor: () -> Unit = {},
+    onSelectCalendarStyle: (CalendarStyle) -> Unit = {},
+    onSelectCalendarColor: (ClockColorOption) -> Unit = {},
     onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -966,145 +998,166 @@ private fun ExpandedMonthCalendarView(
     val leadingEmptyDays = (firstDayOfWeek - Calendar.MONDAY + 7) % 7
     val weekDays = listOf("M", "T", "W", "T", "F", "S", "S")
 
+    val resolvedStyle = remember(calendarStyleId) { CalendarStyle.fromId(calendarStyleId) }
+    val resolvedColorOption = remember(calendarColorId) { ClockColorOption.fromCalendarDefault(calendarColorId) }
+    val resolvedColor = resolvedColorOption.color
+
     // Fade help text off with the 10-second idle dimming
     val helpTextAlpha by animateFloatAsState(
-        targetValue = if (isDimmed) 0.0f else 0.55f,
+        targetValue = if (isDimmed || isCalendarEditorOpen) 0.0f else 0.55f,
         animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
         label = "CalendarHelpTextAlpha"
     )
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp)
-            .pointerInput(Unit) {
-                if (onDoubleTap != null) {
-                    detectTapGestures(onDoubleTap = { onDoubleTap() })
-                }
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Month Title Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = monthName,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-                color = Color.White
-            )
-            Text(
-                text = "Tap a day to view schedule",
-                fontSize = 12.sp,
-                color = TextTertiary,
-                modifier = Modifier.alpha(helpTextAlpha)
-            )
-        }
-
-        // Days of week header (M T W T F S S)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .padding(bottom = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            weekDays.forEach { dayName ->
-                Text(
-                    text = dayName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.45f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
+            .pointerInput(isCalendarEditorOpen) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        if (!isCalendarEditorOpen) {
+                            onDoubleTap?.invoke()
+                        }
+                    },
+                    onLongPress = {
+                        onOpenCalendarEditor()
+                    },
+                    onTap = {
+                        if (isCalendarEditorOpen) {
+                            onCloseCalendarEditor()
+                        }
+                    }
                 )
-            }
-        }
-
-        // Spacious Month Days Grid
-        val totalCells = leadingEmptyDays + daysInMonth
-        val numRows = (totalCells + 6) / 7
-
+            },
+        contentAlignment = Alignment.Center
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth(0.85f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = if (isCalendarEditorOpen) Arrangement.SpaceBetween else Arrangement.Center
         ) {
-            for (r in 0 until numRows) {
+            Column(
+                modifier = if (isCalendarEditorOpen) Modifier.weight(1f) else Modifier,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Month Title Header
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .padding(bottom = if (isCalendarEditorOpen) 8.dp else 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    for (c in 0..6) {
-                        val cellIndex = r * 7 + c
-                        val dayNum = cellIndex - leadingEmptyDays + 1
-                        if (dayNum in 1..daysInMonth) {
-                            val isToday = dayNum == todayDay
-                            val dayEvents = eventsByDay[dayNum]
-                            val hasEvents = !dayEvents.isNullOrEmpty()
+                    Text(
+                        text = monthName,
+                        fontSize = if (isCalendarEditorOpen) 18.sp else 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        color = resolvedColor
+                    )
+                    if (!isCalendarEditorOpen) {
+                        Text(
+                            text = "Tap a day to view schedule · Hold for styles",
+                            fontSize = 12.sp,
+                            color = TextTertiary,
+                            modifier = Modifier.alpha(helpTextAlpha)
+                        )
+                    }
+                }
 
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(44.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        onDayClick(currentYear, currentMonth, dayNum)
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    if (isToday) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(28.dp)
-                                                .background(Color.White, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = dayNum.toString(),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = PureBlack,
-                                                textAlign = TextAlign.Center
-                                            )
-                                        }
-                                    } else {
-                                        Text(
-                                            text = dayNum.toString(),
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color.White.copy(alpha = 0.90f),
-                                            textAlign = TextAlign.Center
+                // Days of week header (M T W T F S S)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .padding(bottom = if (isCalendarEditorOpen) 6.dp else 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    weekDays.forEachIndexed { idx, dayName ->
+                        val isWeekend = idx >= 5
+                        Text(
+                            text = dayName,
+                            fontSize = if (isCalendarEditorOpen) 12.sp else 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isWeekend) resolvedColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.45f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                // Spacious Month Days Grid
+                val totalCells = leadingEmptyDays + daysInMonth
+                val numRows = (totalCells + 6) / 7
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                    verticalArrangement = Arrangement.spacedBy(if (isCalendarEditorOpen) 4.dp else 8.dp)
+                ) {
+                    for (r in 0 until numRows) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            for (c in 0..6) {
+                                val cellIndex = r * 7 + c
+                                val dayNum = cellIndex - leadingEmptyDays + 1
+                                if (dayNum in 1..daysInMonth) {
+                                    val isToday = dayNum == todayDay
+                                    val dayEvents = eventsByDay[dayNum]
+                                    val hasEvents = !dayEvents.isNullOrEmpty()
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(if (isCalendarEditorOpen) 32.dp else 44.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .pointerInput(dayNum, isCalendarEditorOpen) {
+                                                detectTapGestures(
+                                                    onTap = {
+                                                        if (isCalendarEditorOpen) {
+                                                            onCloseCalendarEditor()
+                                                        } else {
+                                                            onDayClick(currentYear, currentMonth, dayNum)
+                                                        }
+                                                    },
+                                                    onLongPress = {
+                                                        onOpenCalendarEditor()
+                                                    }
+                                                )
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        StyledCalendarDayCell(
+                                            dayNum = dayNum,
+                                            isToday = isToday,
+                                            hasEvents = hasEvents,
+                                            style = resolvedStyle,
+                                            accentColor = resolvedColor,
+                                            isCompact = isCalendarEditorOpen
                                         )
                                     }
-
-                                    if (hasEvents) {
-                                        Spacer(modifier = Modifier.height(3.dp))
-                                        Box(
-                                            modifier = Modifier
-                                                .size(4.dp)
-                                                .background(AccentBlue, CircleShape)
-                                        )
-                                    } else {
-                                        Spacer(modifier = Modifier.height(7.dp))
-                                    }
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
-                        } else {
-                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
+            }
+
+            if (isCalendarEditorOpen) {
+                LiveCalendarEditorPanel(
+                    selectedStyle = resolvedStyle,
+                    selectedColor = resolvedColorOption,
+                    onSelectStyle = onSelectCalendarStyle,
+                    onSelectColor = onSelectCalendarColor,
+                    onDone = onCloseCalendarEditor,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
             }
         }
     }
@@ -1112,7 +1165,7 @@ private fun ExpandedMonthCalendarView(
 
 /**
  * Expanded full-page big clock ambient view:
- * Shows a centered, bold, flagship Samsung One UI ambient clock with day and date underneath,
+ * Shows a centered, bold ambient clock with day and date underneath,
  * plus optional ambient weather and battery indicators.
  */
 @Composable
@@ -1121,7 +1174,7 @@ private fun BigClockView(
     weatherCity: String,
     showWeather: Boolean,
     showBattery: Boolean,
-    clockStyleId: String = "ONE_UI_MODERN",
+    clockStyleId: String = "DEFAULT",
     clockColorId: String = "PURE_WHITE",
     isClockEditorOpen: Boolean = false,
     onOpenClockEditor: () -> Unit = {},
