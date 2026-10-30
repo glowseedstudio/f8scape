@@ -137,9 +137,8 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                             WindowManager.LayoutParams.FLAG_FULLSCREEN or
                             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER or
                             WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
-                    PixelFormat.TRANSLUCENT
+                    PixelFormat.OPAQUE
                 ).apply {
                     gravity = Gravity.FILL
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

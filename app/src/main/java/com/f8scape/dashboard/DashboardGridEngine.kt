@@ -41,7 +41,8 @@ fun DashboardGridEngine(
     onDoneEdit: () -> Unit = {},
     onResetDefaults: () -> Unit = {},
     onDoubleTap: (() -> Unit)? = null,
-    onExpandMusic: (() -> Unit)? = null
+    onExpandMusic: (() -> Unit)? = null,
+    onSelectCalendarDay: ((year: Int, month: Int, day: Int) -> Unit)? = null
 ) {
     var showAddCardDialog by remember { mutableStateOf(false) }
 
@@ -194,7 +195,8 @@ fun DashboardGridEngine(
                                     onRemove = {
                                         onUpdateCards(cards.filter { it.id != item.id })
                                     },
-                                    onExpandMusic = onExpandMusic
+                                    onExpandMusic = onExpandMusic,
+                                    onSelectCalendarDay = onSelectCalendarDay
                                 )
                             }
                         }
@@ -217,7 +219,8 @@ fun DashboardGridEngine(
                                     onRemove = if (cards.size > 1) {
                                         { onUpdateCards(cards.filter { it.id != item.id }) }
                                     } else null,
-                                    onExpandMusic = onExpandMusic
+                                    onExpandMusic = onExpandMusic,
+                                    onSelectCalendarDay = onSelectCalendarDay
                                 )
                             }
                         }
@@ -255,7 +258,8 @@ fun DashboardGridEngine(
                             onRemove = if (cards.size > 1) {
                                 { onUpdateCards(cards.filter { it.id != item.id }) }
                             } else null,
-                            onExpandMusic = onExpandMusic
+                            onExpandMusic = onExpandMusic,
+                            onSelectCalendarDay = onSelectCalendarDay
                         )
                     }
                 }
@@ -397,7 +401,8 @@ private fun RenderCard(
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
-    onExpandMusic: (() -> Unit)? = null
+    onExpandMusic: (() -> Unit)? = null,
+    onSelectCalendarDay: ((year: Int, month: Int, day: Int) -> Unit)? = null
 ) {
     when (item.type) {
         CardType.CLOCK -> AmbientClockCard(
@@ -425,6 +430,9 @@ private fun RenderCard(
         CardType.CALENDAR -> AmbientCalendarCard(
             maskTitle = maskCalendar,
             isEditMode = isEditMode,
+            onDayClick = { year, month, day ->
+                onSelectCalendarDay?.invoke(year, month, day)
+            },
             onMoveUp = onMoveUp,
             onMoveDown = onMoveDown,
             onRemove = onRemove

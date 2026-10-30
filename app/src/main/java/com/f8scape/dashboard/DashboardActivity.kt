@@ -67,13 +67,7 @@ class DashboardActivity : ComponentActivity() {
                 } else {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
-                if (prefs.showWallpaperBackground) {
-                    window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-                    window.setBackgroundDrawableResource(android.R.color.transparent)
-                } else {
-                    window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-                    window.setBackgroundDrawableResource(android.R.color.black)
-                }
+                window.setBackgroundDrawableResource(android.R.color.black)
                 // Window-specific brightness
                 window.attributes = window.attributes.apply {
                     screenBrightness = prefs.screenDimLevel.coerceIn(0.01f, 1.0f)

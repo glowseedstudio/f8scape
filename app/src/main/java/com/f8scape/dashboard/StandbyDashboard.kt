@@ -33,10 +33,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.f8scape.app.theme.*
+import com.f8scape.cards.CalendarDataProvider
+import com.f8scape.cards.CalendarEventInfo
 import com.f8scape.cards.CardItem
 import com.f8scape.cards.DefaultCardLayouts
 import com.f8scape.data.PreferencesRepository
@@ -47,6 +51,12 @@ import com.f8scape.util.TimeUtils
 import com.f8scape.util.WallpaperHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+data class CalendarDaySelection(val year: Int, val month: Int, val day: Int)
 
 @Composable
 fun StandbyDashboard(
@@ -61,6 +71,7 @@ fun StandbyDashboard(
     var lastInteractionTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isEditMode by remember { mutableStateOf(false) }
     var isFullMusicMode by remember { mutableStateOf(false) }
+    var selectedCalendarDay by remember { mutableStateOf<CalendarDaySelection?>(null) }
     var localContentBrightness by remember(preferences.contentBrightness) {
         mutableFloatStateOf(preferences.contentBrightness)
     }
@@ -147,17 +158,7 @@ fun StandbyDashboard(
         }
     }
 
-    val rootBackgroundColor = remember(preferences.showWallpaperBackground, activeBackgroundArtwork) {
-        if (!preferences.showWallpaperBackground) {
-            PureBlack
-        } else if (activeBackgroundArtwork != null) {
-            PureBlack
-        } else {
-            // Translucent soft scrim over the live system wallpaper (FLAG_SHOW_WALLPAPER)
-            // 20% black keeps the wallpaper rich and vibrant while maintaining high legibility for white numerals
-            PureBlack.copy(alpha = 0.20f)
-        }
-    }
+    val rootBackgroundColor = PureBlack
 
     Box(
         modifier = Modifier
@@ -220,10 +221,13 @@ fun StandbyDashboard(
                 .offset { animatedBurnInOffset }
                 .alpha(localContentBrightness)
         ) {
-            // Top-left back chevron when in Full Music Mode (soft styling matching the top-right X)
-            if (showFullMusic) {
+            // Top-left back chevron when in Full Music Mode or Calendar Overlay Mode
+            if (showFullMusic || selectedCalendarDay != null) {
                 IconButton(
-                    onClick = { isFullMusicMode = false },
+                    onClick = {
+                        isFullMusicMode = false
+                        selectedCalendarDay = null
+                    },
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .alpha(0.6f)
@@ -248,7 +252,17 @@ fun StandbyDashboard(
                 }
             }
 
-            if (showFullMusic) {
+            if (selectedCalendarDay != null) {
+                // Full Calendar Overlay: Date & Day typography on the left, daily entries list on the right
+                ExpandedCalendarView(
+                    selection = selectedCalendarDay!!,
+                    maskTitle = preferences.calendarMaskLocked,
+                    onDoubleTap = onDismissRequest,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 28.dp, bottom = 20.dp)
+                )
+            } else if (showFullMusic) {
                 // Full Music View: Album Art where clock was, expanded controls on the side
                 ExpandedMusicView(
                     trackInfo = trackInfo,
@@ -291,7 +305,10 @@ fun StandbyDashboard(
                             }
                         },
                         onDoubleTap = onDismissRequest,
-                        onExpandMusic = { isFullMusicMode = true }
+                        onExpandMusic = { isFullMusicMode = true },
+                        onSelectCalendarDay = { year, month, day ->
+                            selectedCalendarDay = CalendarDaySelection(year, month, day)
+                        }
                     )
                 }
 
@@ -315,7 +332,7 @@ fun StandbyDashboard(
         }
 
         // Invisible gesture zone on the left edge (to the left of the clock) for vertical drag brightness control
-        if (!isEditMode) {
+        if (!isEditMode && !showFullMusic && selectedCalendarDay == null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
@@ -522,6 +539,181 @@ private fun ExpandedMusicView(
                         tint = Color.White.copy(alpha = 0.85f),
                         modifier = Modifier.size(32.dp)
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Expanded full-calendar ambient view:
+ * Large day of week, day number, and month on the left pane (where clock normally sits),
+ * scrollable list of calendar entries for that day on the right pane.
+ */
+@Composable
+private fun ExpandedCalendarView(
+    selection: CalendarDaySelection,
+    maskTitle: Boolean = false,
+    onDoubleTap: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val calendarProvider = remember { CalendarDataProvider(context) }
+    var events by remember { mutableStateOf<List<CalendarEventInfo>>(emptyList()) }
+
+    LaunchedEffect(selection) {
+        events = calendarProvider.getEventsForDay(selection.year, selection.month, selection.day, maskTitle)
+    }
+
+    val dayCal = remember(selection) {
+        Calendar.getInstance().apply {
+            set(Calendar.YEAR, selection.year)
+            set(Calendar.MONTH, selection.month)
+            set(Calendar.DAY_OF_MONTH, selection.day)
+        }
+    }
+    val dayOfWeek = remember(dayCal) {
+        SimpleDateFormat("EEEE", Locale.getDefault()).format(dayCal.time).uppercase()
+    }
+    val monthYear = remember(dayCal) {
+        SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(dayCal.time)
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .pointerInput(Unit) {
+                if (onDoubleTap != null) {
+                    detectTapGestures(onDoubleTap = { onDoubleTap() })
+                }
+            },
+        horizontalArrangement = Arrangement.spacedBy(32.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Left Pane: Large Date & Day typography (where Clock/Album Art normally sits)
+        Box(
+            modifier = Modifier
+                .weight(1.05f)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = dayOfWeek,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = AccentBlue
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = selection.day.toString(),
+                    fontSize = 92.sp,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = (-4.0).sp,
+                    color = Color.White
+                )
+                Text(
+                    text = monthYear,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = if (events.isEmpty()) "No events scheduled" else "${events.size} event${if (events.size > 1) "s" else ""}",
+                    fontSize = 13.sp,
+                    color = TextTertiary
+                )
+            }
+        }
+
+        // Right Pane: Scrollable List of Calendar Entries for the Selected Day
+        Box(
+            modifier = Modifier
+                .weight(0.95f)
+                .fillMaxHeight()
+                .padding(end = 12.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (events.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EventAvailable,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.25f),
+                        modifier = Modifier.size(44.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "No events scheduled for this day",
+                        fontSize = 15.sp,
+                        color = Color.White.copy(alpha = 0.45f)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp)
+                ) {
+                    items(events) { event ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.White.copy(alpha = 0.07f), RoundedCornerShape(14.dp))
+                                .padding(14.dp)
+                        ) {
+                            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                            val timeStr = if (event.isAllDay) {
+                                "All Day"
+                            } else {
+                                "${timeFormat.format(Date(event.startTimeMs))} – ${timeFormat.format(Date(event.endTimeMs))}"
+                            }
+                            Text(
+                                text = timeStr,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AccentBlue
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = event.title,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (!event.location.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = TextTertiary,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = event.location,
+                                        fontSize = 12.sp,
+                                        color = TextTertiary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

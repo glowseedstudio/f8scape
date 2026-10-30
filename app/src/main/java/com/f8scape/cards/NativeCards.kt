@@ -22,12 +22,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.f8scape.app.theme.*
 import com.f8scape.util.TimeUtils
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -401,23 +403,55 @@ fun AmbientBatteryCard(
 fun AmbientCalendarCard(
     maskTitle: Boolean = false,
     isEditMode: Boolean = false,
+    onDayClick: (year: Int, month: Int, day: Int) -> Unit = { _, _, _ -> },
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val calendarProvider = remember { CalendarDataProvider(context) }
-    var upcomingEvent by remember { mutableStateOf<CalendarEventInfo?>(null) }
     var hasPermission by remember { mutableStateOf(calendarProvider.hasCalendarPermission()) }
+
+    val now = remember { Calendar.getInstance() }
+    val currentYear = now.get(Calendar.YEAR)
+    val currentMonth = now.get(Calendar.MONTH)
+    val todayDay = now.get(Calendar.DAY_OF_MONTH)
+
+    var eventsByDay by remember { mutableStateOf<Map<Int, List<CalendarEventInfo>>>(emptyMap()) }
 
     LaunchedEffect(Unit) {
         while (true) {
             hasPermission = calendarProvider.hasCalendarPermission()
             if (hasPermission) {
-                upcomingEvent = calendarProvider.getNextUpcomingEvent(maskTitleForPrivacy = maskTitle)
+                eventsByDay = calendarProvider.getEventsForMonth(currentYear, currentMonth, maskTitle)
             }
-            delay(15_000L)
+            delay(20_000L)
         }
+    }
+
+    val monthName = remember(currentMonth) {
+        SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(now.time).uppercase()
+    }
+
+    val weekDays = listOf("M", "T", "W", "T", "F", "S", "S")
+
+    val daysInMonth = remember(currentYear, currentMonth) {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, currentYear)
+            set(Calendar.MONTH, currentMonth)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+
+    val leadingEmptyDays = remember(currentYear, currentMonth) {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, currentYear)
+            set(Calendar.MONTH, currentMonth)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        val dow = cal.get(Calendar.DAY_OF_WEEK) // Sunday = 1, Monday = 2
+        (dow - Calendar.MONDAY + 7) % 7
     }
 
     CardContainer(
@@ -426,69 +460,116 @@ fun AmbientCalendarCard(
         onMoveDown = onMoveDown,
         onRemove = onRemove
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = 4.dp)
         ) {
-            Box(
+            // Month Header
+            Row(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.10f)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp, start = 2.dp, end = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(22.dp)
+                Text(
+                    text = monthName,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.75f),
+                    letterSpacing = 1.sp
                 )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
                 if (!hasPermission) {
                     Text(
-                        text = "Calendar Access",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        text = "No Permission",
+                        fontSize = 10.sp,
+                        color = StatusWarning
                     )
+                }
+            }
+
+            // Days of week header (M T W T F S S)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                weekDays.forEach { dayName ->
                     Text(
-                        text = "Grant permission in Settings to show events",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.50f)
+                        text = dayName,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White.copy(alpha = 0.40f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
                     )
-                } else if (upcomingEvent == null) {
-                    Text(
-                        text = "No Upcoming Events",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Your schedule is clear for today",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.60f)
-                    )
-                } else {
-                    val event = upcomingEvent!!
-                    Text(
-                        text = event.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-                    val formattedTime = if (event.isAllDay) "All day" else "${timeFormat.format(Date(event.startTimeMs))} - ${timeFormat.format(Date(event.endTimeMs))}"
-                    Text(
-                        text = formattedTime,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.70f)
-                    )
+                }
+            }
+
+            // Calendar Days Grid
+            val totalCells = leadingEmptyDays + daysInMonth
+            val numRows = (totalCells + 6) / 7
+
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                for (r in 0 until numRows) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        for (c in 0..6) {
+                            val cellIndex = r * 7 + c
+                            val dayNum = cellIndex - leadingEmptyDays + 1
+                            if (dayNum in 1..daysInMonth) {
+                                val isToday = dayNum == todayDay
+                                val dayEvents = eventsByDay[dayNum]
+                                val hasEvents = !dayEvents.isNullOrEmpty()
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(26.dp)
+                                        .clip(CircleShape)
+                                        .clickable {
+                                            onDayClick(currentYear, currentMonth, dayNum)
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(
+                                            text = dayNum.toString(),
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isToday) PureBlack else Color.White.copy(alpha = 0.85f),
+                                            textAlign = TextAlign.Center,
+                                            modifier = if (isToday) {
+                                                Modifier
+                                                    .background(Color.White, CircleShape)
+                                                    .size(19.dp)
+                                                    .wrapContentSize(Alignment.Center)
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        if (hasEvents && !isToday) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .padding(top = 1.dp)
+                                                    .size(2.5.dp)
+                                                    .background(Color.White.copy(alpha = 0.85f), CircleShape)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
             }
         }
