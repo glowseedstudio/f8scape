@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.f8scape.app.theme.*
 import com.f8scape.media.F8MediaNotificationListener
 import com.f8scape.media.MediaPlaybackRepository
+import com.f8scape.media.SquigglyProgressBar
 import com.f8scape.util.TimeUtils
 
 /**
@@ -191,16 +192,16 @@ fun AmbientMediaCard(
                     // Progress Bar (if duration available)
                     if (trackInfo.durationMs > 0) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            LinearProgressIndicator(
-                                progress = { (trackInfo.positionMs.toFloat() / trackInfo.durationMs).coerceIn(0f, 1f) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(3.dp)
-                                    .clip(RoundedCornerShape(2.dp)),
-                                color = Color.White,
-                                trackColor = Color.White.copy(alpha = 0.20f)
+                            val currentProgress = (trackInfo.positionMs.toFloat() / trackInfo.durationMs).coerceIn(0f, 1f)
+                            SquigglyProgressBar(
+                                progress = currentProgress,
+                                isPlaying = trackInfo.isPlaying,
+                                onSeek = { fraction ->
+                                    MediaPlaybackRepository.seekTo((fraction * trackInfo.durationMs).toLong())
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween

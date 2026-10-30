@@ -63,6 +63,10 @@ object MediaPlaybackRepository {
     fun skipToPrevious() {
         transportActionHandler?.onSkipToPrevious()
     }
+
+    fun seekTo(positionMs: Long) {
+        transportActionHandler?.onSeekTo(positionMs)
+    }
 }
 
 /**
@@ -73,4 +77,5 @@ interface MediaTransportActionHandler {
     fun onPause()
     fun onSkipToNext()
     fun onSkipToPrevious()
+    fun onSeekTo(positionMs: Long)
 }

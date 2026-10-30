@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
 import com.f8scape.util.F8Log
 
 /**
@@ -99,6 +100,45 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         }
     }
 
+    private val positionTickRunnable = object : Runnable {
+        override fun run() {
+            val controller = activeController
+            val state = controller?.playbackState
+            if (controller != null && state?.state == PlaybackState.STATE_PLAYING) {
+                val current = MediaPlaybackRepository.mediaTrackState.value
+                val duration = current.durationMs
+                val computedPos = computeCurrentPosition(state, duration)
+                if (current.hasActiveSession) {
+                    MediaPlaybackRepository.updateTrackInfo(
+                        current.copy(positionMs = computedPos, isPlaying = true)
+                    )
+                }
+                mainHandler.postDelayed(this, 500L)
+            }
+        }
+    }
+
+    private fun computeCurrentPosition(state: PlaybackState?, durationMs: Long): Long {
+        if (state == null) return 0L
+        val basePos = state.position
+        if (state.state == PlaybackState.STATE_PLAYING && state.lastPositionUpdateTime > 0L) {
+            val timeDelta = android.os.SystemClock.elapsedRealtime() - state.lastPositionUpdateTime
+            val speed = if (state.playbackSpeed > 0f) state.playbackSpeed else 1.0f
+            val calculated = basePos + (timeDelta * speed).toLong()
+            return if (durationMs > 0L) calculated.coerceIn(0L, durationMs) else calculated.coerceAtLeast(0L)
+        }
+        return if (durationMs > 0L) basePos.coerceIn(0L, durationMs) else basePos.coerceAtLeast(0L)
+    }
+
+    private fun startPositionTicker() {
+        mainHandler.removeCallbacks(positionTickRunnable)
+        mainHandler.post(positionTickRunnable)
+    }
+
+    private fun stopPositionTicker() {
+        mainHandler.removeCallbacks(positionTickRunnable)
+    }
+
     private fun handleSessionsChanged(controllers: List<MediaController>?) {
         val newController = controllers?.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
             ?: controllers?.firstOrNull()
@@ -112,6 +152,7 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         if (activeController != null) {
             syncState(activeController!!)
         } else {
+            stopPositionTicker()
             MediaPlaybackRepository.updateTrackInfo(MediaTrackInfo(hasActiveSession = false))
         }
     }
@@ -139,6 +180,9 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         val canSkipNext = (actions and PlaybackState.ACTION_SKIP_TO_NEXT) != 0L || true
         val canSkipPrevious = (actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS) != 0L || true
 
+        val durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+        val positionMs = computeCurrentPosition(playbackState, durationMs)
+
         MediaPlaybackRepository.updateTrackInfo(
             MediaTrackInfo(
                 title = title.ifBlank { "Media Playing" },
@@ -146,8 +190,8 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
                 album = album,
                 artwork = artBitmap,
                 isPlaying = isPlaying,
-                durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L,
-                positionMs = playbackState?.position ?: 0L,
+                durationMs = durationMs,
+                positionMs = positionMs,
                 packageName = controller.packageName,
                 hasActiveSession = true,
                 canPlayPause = canPlayPause,
@@ -155,24 +199,45 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
                 canSkipPrevious = canSkipPrevious
             )
         )
+
+        if (isPlaying) {
+            startPositionTicker()
+        } else {
+            stopPositionTicker()
+        }
     }
 
     private fun updatePlaybackState(state: PlaybackState?) {
         val current = MediaPlaybackRepository.mediaTrackState.value
         val isPlaying = state?.state == PlaybackState.STATE_PLAYING
+        val currentPosition = computeCurrentPosition(state, current.durationMs)
         MediaPlaybackRepository.updateTrackInfo(
             current.copy(
                 isPlaying = isPlaying,
-                positionMs = state?.position ?: current.positionMs
+                positionMs = currentPosition
             )
         )
+        if (isPlaying) {
+            startPositionTicker()
+        } else {
+            stopPositionTicker()
+        }
     }
 
     private fun updateMetadata(metadata: MediaMetadata?) {
-        activeController?.let { syncState(it) }
+        activeController?.let { controller ->
+            syncState(controller)
+            val duration = controller.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+            if (duration <= 0L) {
+                mainHandler.postDelayed({
+                    activeController?.let { syncState(it) }
+                }, 350L)
+            }
+        }
     }
 
     private fun cleanupController() {
+        stopPositionTicker()
         try {
             activeController?.unregisterCallback(controllerCallback)
         } catch (ignored: Exception) {}
@@ -203,11 +268,32 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         }
     }
 
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        super.onNotificationPosted(sbn)
+        // Refresh active sessions on notification changes (e.g., track changes from Spotify/YouTube Music)
+        refreshActiveSessions()
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        super.onNotificationRemoved(sbn)
+        refreshActiveSessions()
+    }
+
     override fun onSkipToPrevious() {
         try {
             activeController?.transportControls?.skipToPrevious()
         } catch (e: Exception) {
             F8Log.e("F8Media", "Failed to trigger skipToPrevious", e)
+        }
+    }
+
+    override fun onSeekTo(positionMs: Long) {
+        try {
+            activeController?.transportControls?.seekTo(positionMs)
+            val current = MediaPlaybackRepository.mediaTrackState.value
+            MediaPlaybackRepository.updateTrackInfo(current.copy(positionMs = positionMs))
+        } catch (e: Exception) {
+            F8Log.e("F8Media", "Failed to trigger seekTo", e)
         }
     }
 

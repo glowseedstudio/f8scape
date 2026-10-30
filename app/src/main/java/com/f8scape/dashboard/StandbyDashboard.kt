@@ -70,6 +70,7 @@ import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
 import com.f8scape.media.MediaPlaybackRepository
 import com.f8scape.media.MediaTrackInfo
+import com.f8scape.media.SquigglyProgressBar
 import com.f8scape.util.TimeUtils
 import com.f8scape.util.WallpaperHelper
 import kotlinx.coroutines.delay
@@ -629,6 +630,9 @@ private fun ExpandedMusicView(
                 SquigglyProgressBar(
                     progress = currentProgress,
                     isPlaying = trackInfo.isPlaying,
+                    onSeek = { fraction ->
+                        MediaPlaybackRepository.seekTo((fraction * trackInfo.durationMs).toLong())
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -875,97 +879,6 @@ private fun ExpandedCalendarView(
                     }
                 }
             }
-        }
-    }
-}
-
-/**
- * Google Media Player-style squiggly/wavy progress bar.
- * The played portion renders as an animated sine wave when audio is active,
- * leading into a crisp circular scrubber playhead, with the remaining track
- * extending as a subtle straight line.
- * Animation frames are completely halted when paused to save battery and CPU.
- */
-@Composable
-private fun SquigglyProgressBar(
-    progress: Float,
-    isPlaying: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val phase by if (isPlaying) {
-        val infiniteTransition = rememberInfiniteTransition(label = "SquigglyWaveLoop")
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = (2 * Math.PI).toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 2200, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "SquigglyPhase"
-        )
-    } else {
-        remember { mutableFloatStateOf(0f) }
-    }
-
-    val wavePath = remember { Path() }
-
-    Canvas(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(20.dp)
-    ) {
-        val width = size.width
-        val height = size.height
-        val midY = height / 2f
-        val clampedProgress = progress.coerceIn(0f, 1f)
-        val progressX = width * clampedProgress
-
-        val strokeWidthPx = 3.5.dp.toPx()
-        val waveAmplitude = if (isPlaying) 3.5.dp.toPx() else 0f
-        val wavelengthPx = 38.dp.toPx()
-
-        // 1. Draw unplayed portion (straight horizontal line from progressX to end)
-        if (progressX < width) {
-            drawLine(
-                color = Color.White.copy(alpha = 0.22f),
-                start = androidx.compose.ui.geometry.Offset(progressX, midY),
-                end = androidx.compose.ui.geometry.Offset(width, midY),
-                strokeWidth = strokeWidthPx,
-                cap = StrokeCap.Round
-            )
-        }
-
-        // 2. Draw played portion (smooth sine wave up to progressX)
-        if (progressX > 0f) {
-            wavePath.reset()
-            val dx = 2.5.dp.toPx()
-            var x = 0f
-            wavePath.moveTo(0f, midY)
-
-            while (x < progressX) {
-                // Smoothly taper amplitude at the beginning and right before the playhead thumb
-                val taperStart = (x / 14.dp.toPx()).coerceIn(0f, 1f)
-                val taperEnd = ((progressX - x) / 14.dp.toPx()).coerceIn(0f, 1f)
-                val currentAmp = waveAmplitude * taperStart * taperEnd
-
-                val y = midY + currentAmp * Math.sin(2.0 * Math.PI * (x / wavelengthPx) - phase).toFloat()
-                wavePath.lineTo(x, y)
-                x += dx
-            }
-            wavePath.lineTo(progressX, midY)
-
-            drawPath(
-                path = wavePath,
-                color = Color.White,
-                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
-            )
-
-            // Circular playhead scrubber thumb at progress position
-            drawCircle(
-                color = Color.White,
-                radius = 5.dp.toPx(),
-                center = androidx.compose.ui.geometry.Offset(progressX, midY)
-            )
         }
     }
 }
