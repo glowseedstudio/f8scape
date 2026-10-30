@@ -46,11 +46,11 @@ fun CardContainer(
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    color = AccentBlue.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(14.dp)
+                    color = Color.White.copy(alpha = 0.22f),
+                    shape = RoundedCornerShape(16.dp)
                 ),
-            colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark.copy(alpha = 0.35f)),
-            shape = RoundedCornerShape(14.dp)
+            colors = CardDefaults.cardColors(containerColor = Color(0x381E1E20)),
+            shape = RoundedCornerShape(16.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -60,26 +60,59 @@ fun CardContainer(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 6.dp),
+                        .padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (onMoveUp != null) {
-                            IconButton(onClick = onMoveUp, modifier = Modifier.size(28.dp)) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up", tint = AccentBlue)
+                            IconButton(
+                                onClick = onMoveUp,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.12f))
+                            ) {
+                                Icon(
+                                    Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Move up",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                         if (onMoveDown != null) {
-                            IconButton(onClick = onMoveDown, modifier = Modifier.size(28.dp)) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down", tint = AccentBlue)
+                            IconButton(
+                                onClick = onMoveDown,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.12f))
+                            ) {
+                                Icon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Move down",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                     }
 
                     if (onRemove != null) {
-                        IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "Remove card", tint = StatusWarning)
+                        IconButton(
+                            onClick = onRemove,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color(0x33FF453A))
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Remove card",
+                                tint = Color(0xFFFF6961),
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 }
@@ -375,11 +408,15 @@ fun AmbientCalendarCard(
     val context = LocalContext.current
     val calendarProvider = remember { CalendarDataProvider(context) }
     var upcomingEvent by remember { mutableStateOf<CalendarEventInfo?>(null) }
-    val hasPermission = remember { calendarProvider.hasCalendarPermission() }
+    var hasPermission by remember { mutableStateOf(calendarProvider.hasCalendarPermission()) }
 
     LaunchedEffect(Unit) {
-        if (hasPermission) {
-            upcomingEvent = calendarProvider.getNextUpcomingEvent(maskTitleForPrivacy = maskTitle)
+        while (true) {
+            hasPermission = calendarProvider.hasCalendarPermission()
+            if (hasPermission) {
+                upcomingEvent = calendarProvider.getNextUpcomingEvent(maskTitleForPrivacy = maskTitle)
+            }
+            delay(15_000L)
         }
     }
 
@@ -389,58 +426,76 @@ fun AmbientCalendarCard(
         onMoveDown = onMoveDown,
         onRemove = onRemove
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            color = Color(0x331C1C1E),
+            shape = RoundedCornerShape(20.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(
-                imageVector = Icons.Default.CalendarToday,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
 
-            Column(modifier = Modifier.weight(1f)) {
-                if (!hasPermission) {
-                    Text(
-                        text = "Calendar access not enabled",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Grant permission in Settings to show events",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.50f)
-                    )
-                } else if (upcomingEvent == null) {
-                    Text(
-                        text = "No upcoming events",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Schedule is clear",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.60f)
-                    )
-                } else {
-                    val event = upcomingEvent!!
-                    Text(
-                        text = event.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
-                    val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-                    val formattedTime = if (event.isAllDay) "All day" else "${timeFormat.format(Date(event.startTimeMs))} - ${timeFormat.format(Date(event.endTimeMs))}"
-                    Text(
-                        text = formattedTime,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.70f)
-                    )
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    if (!hasPermission) {
+                        Text(
+                            text = "Calendar Access",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Grant permission in Settings to show events",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.50f)
+                        )
+                    } else if (upcomingEvent == null) {
+                        Text(
+                            text = "No Upcoming Events",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Your schedule is clear for today",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.60f)
+                        )
+                    } else {
+                        val event = upcomingEvent!!
+                        Text(
+                            text = event.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                        val formattedTime = if (event.isAllDay) "All day" else "${timeFormat.format(Date(event.startTimeMs))} - ${timeFormat.format(Date(event.endTimeMs))}"
+                        Text(
+                            text = formattedTime,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.70f)
+                        )
+                    }
                 }
             }
         }

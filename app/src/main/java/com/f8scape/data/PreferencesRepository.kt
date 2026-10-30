@@ -24,7 +24,8 @@ data class UserPreferences(
     val customLayoutSerialized: String = "",
     val weatherCity: String = "Canberra",
     val calendarMaskLocked: Boolean = false,
-    val kenBurnsEnabled: Boolean = true
+    val kenBurnsEnabled: Boolean = true,
+    val showWallpaperBackground: Boolean = true
 )
 
 class PreferencesRepository(
@@ -43,6 +44,7 @@ class PreferencesRepository(
         val WEATHER_CITY = stringPreferencesKey("weather_city")
         val CALENDAR_MASK_LOCKED = booleanPreferencesKey("calendar_mask_locked")
         val KEN_BURNS_ENABLED = booleanPreferencesKey("ken_burns_enabled")
+        val SHOW_WALLPAPER_BACKGROUND = booleanPreferencesKey("show_wallpaper_background")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -66,7 +68,8 @@ class PreferencesRepository(
                 customLayoutSerialized = preferences[PreferencesKeys.CUSTOM_LAYOUT] ?: "",
                 weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "Canberra",
                 calendarMaskLocked = preferences[PreferencesKeys.CALENDAR_MASK_LOCKED] ?: false,
-                kenBurnsEnabled = preferences[PreferencesKeys.KEN_BURNS_ENABLED] ?: true
+                kenBurnsEnabled = preferences[PreferencesKeys.KEN_BURNS_ENABLED] ?: true,
+                showWallpaperBackground = preferences[PreferencesKeys.SHOW_WALLPAPER_BACKGROUND] ?: true
             )
         }
 
@@ -131,6 +134,12 @@ class PreferencesRepository(
     suspend fun setKenBurnsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.KEN_BURNS_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setShowWallpaperBackground(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_WALLPAPER_BACKGROUND] = enabled
         }
     }
 }

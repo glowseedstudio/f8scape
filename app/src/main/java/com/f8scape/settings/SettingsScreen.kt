@@ -1,17 +1,21 @@
 package com.f8scape.settings
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.f8scape.app.theme.*
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
@@ -37,6 +42,18 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val preferences by preferencesRepository.userPreferencesFlow.collectAsState(initial = UserPreferences())
 
+    var hasCalendarPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCalendarPermission = isGranted
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -49,7 +66,7 @@ fun SettingsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -168,6 +185,42 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Calendar Permission
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Calendar Schedule Access", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                            Text(
+                                text = if (hasCalendarPermission) "Granted & active (Events display on card)" else "Not granted (Tap to allow calendar card events)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (hasCalendarPermission) StatusSuccess else StatusWarning
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                if (!hasCalendarPermission) {
+                                    calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+                                } else {
+                                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    })
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(if (hasCalendarPermission) "Config" else "Grant", color = AccentBlue, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     // Calendar Privacy
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -232,6 +285,24 @@ fun SettingsScreen(
                             colors = SwitchDefaults.colors(checkedThumbColor = PureBlack, checkedTrackColor = AccentBlue)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("System Wallpaper as Background", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                            Text("Display your phone wallpaper with Ken Burns motion when music is not playing", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.showWallpaperBackground,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowWallpaperBackground(it) } },
+                            colors = SwitchDefaults.colors(checkedThumbColor = PureBlack, checkedTrackColor = AccentBlue)
+                        )
+                    }
                 }
             }
 
@@ -263,7 +334,7 @@ fun SettingsScreen(
                         ) {
                             Text(if (isA11yRunning) "Config" else "Open", color = AccentBlue, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
                         }
                     }
 
@@ -298,7 +369,7 @@ fun SettingsScreen(
                         ) {
                             Text(if (isOverlayGranted) "Config" else "Grant", color = AccentBlue, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
                         }
                     }
 
@@ -330,7 +401,24 @@ fun SettingsScreen(
                         ) {
                             Text(if (isMediaAccessGranted) "Config" else "Grant", color = AccentBlue, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Quick Settings Tile Info
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Quick Settings Tile", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                            Text(
+                                text = "Swipe down your Samsung Quick Panel and tap edit buttons to add the 'F8scape' tile for 1-tap StandBy toggling.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
                         }
                     }
                 }

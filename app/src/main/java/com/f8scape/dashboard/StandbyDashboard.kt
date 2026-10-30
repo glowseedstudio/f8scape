@@ -1,10 +1,15 @@
 package com.f8scape.dashboard
 
+import android.graphics.Bitmap
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -20,6 +25,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +43,7 @@ import com.f8scape.data.UserPreferences
 import com.f8scape.media.MediaPlaybackRepository
 import com.f8scape.media.MediaTrackInfo
 import com.f8scape.util.TimeUtils
+import com.f8scape.util.WallpaperHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -48,6 +57,7 @@ fun StandbyDashboard(
     val preferences by preferencesRepo.userPreferencesFlow.collectAsState(initial = UserPreferences())
 
     var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var lastInteractionTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isEditMode by remember { mutableStateOf(false) }
     var isFullMusicMode by remember { mutableStateOf(false) }
 
@@ -60,13 +70,37 @@ fun StandbyDashboard(
     }
     var localCards by remember(currentCards) { mutableStateOf(currentCards) }
 
-    // Periodic minute time tick
+    // Periodic second/minute tick
     LaunchedEffect(Unit) {
         while (true) {
             currentTimeMs = System.currentTimeMillis()
             delay(1000L)
         }
     }
+
+    // Load system wallpaper for ambient background when music is idle
+    var wallpaperBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(preferences.showWallpaperBackground) {
+        if (preferences.showWallpaperBackground) {
+            wallpaperBitmap = WallpaperHelper.getWallpaperBitmap(context)
+        } else {
+            wallpaperBitmap = null
+        }
+    }
+
+    // 10-Second Idle Dimming: Smoothly dim screen to 30% after 10s of inactivity
+    val isIdleDimmed = remember(currentTimeMs, lastInteractionTimeMs, isEditMode) {
+        !isEditMode && ((currentTimeMs - lastInteractionTimeMs) >= 10_000L)
+    }
+
+    val idleDimAlpha by animateFloatAsState(
+        targetValue = if (isIdleDimmed) 0.70f else 0.0f,
+        animationSpec = tween(
+            durationMillis = 800,
+            easing = FastOutSlowInEasing
+        ),
+        label = "IdleDimAlpha"
+    )
 
     // OLED Burn-In Orbital Drift (8-point minute-boundary cycle)
     val burnInStep = remember(currentTimeMs / 60_000L) {
@@ -98,23 +132,67 @@ fun StandbyDashboard(
     val trackInfo by MediaPlaybackRepository.mediaTrackState.collectAsState()
     val showFullMusic = isFullMusicMode && trackInfo.hasActiveSession
 
+    // Choose active background: Playing song artwork takes priority; falls back to system wallpaper
+    val activeBackgroundArtwork = remember(trackInfo.isPlaying, trackInfo.artwork, wallpaperBitmap, preferences.showWallpaperBackground) {
+        if (trackInfo.isPlaying && trackInfo.artwork != null) {
+            trackInfo.artwork
+        } else if (preferences.showWallpaperBackground) {
+            wallpaperBitmap
+        } else {
+            null
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(PureBlack)
+            // Initial pointer pass catches ANY user touch to wake up immediately and reset the 10s idle timer
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.type == PointerEventType.Press) {
+                            lastInteractionTimeMs = System.currentTimeMillis()
+                        }
+                    }
+                }
+            }
+            // Double tap anywhere on background exits; long press customizes
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        onDismissRequest()
+                    },
+                    onLongPress = {
+                        if (!isFullMusicMode && !isEditMode) {
+                            isEditMode = true
+                        }
+                    }
+                )
+            }
     ) {
-        // Ken Burns Ambient Artwork Background (dimmed edge-to-edge behind floating elements)
+        // Ken Burns Ambient Artwork / Wallpaper Background
         KenBurnsBackground(
-            artwork = trackInfo.artwork,
-            isEnabled = preferences.kenBurnsEnabled && trackInfo.isPlaying
+            artwork = activeBackgroundArtwork,
+            isEnabled = preferences.kenBurnsEnabled && activeBackgroundArtwork != null
         )
 
-        // Ambient dimming scrim (edge-to-edge fullscreen, eliminates darker inset box)
+        // Master window dimming scrim
         if (preferences.screenDimLevel < 0.8f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(PureBlack.copy(alpha = (1.0f - preferences.screenDimLevel) * 0.45f))
+            )
+        }
+
+        // 10-second idle dimming scrim (dims screen down to 30% brightness, saving OLED power)
+        if (idleDimAlpha > 0.01f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(PureBlack.copy(alpha = idleDimAlpha))
             )
         }
 
@@ -160,6 +238,7 @@ fun StandbyDashboard(
                 // Full Music View: Album Art where clock was, expanded controls on the side
                 ExpandedMusicView(
                     trackInfo = trackInfo,
+                    onDoubleTap = onDismissRequest,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(top = 28.dp, bottom = 20.dp)
@@ -197,6 +276,7 @@ fun StandbyDashboard(
                                 preferencesRepo.setCustomLayout("")
                             }
                         },
+                        onDoubleTap = onDismissRequest,
                         onExpandMusic = { isFullMusicMode = true }
                     )
                 }
@@ -229,12 +309,18 @@ fun StandbyDashboard(
 @Composable
 private fun ExpandedMusicView(
     trackInfo: MediaTrackInfo,
+    onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .pointerInput(Unit) {
+                if (onDoubleTap != null) {
+                    detectTapGestures(onDoubleTap = { onDoubleTap() })
+                }
+            },
         horizontalArrangement = Arrangement.spacedBy(32.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -20,6 +20,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +40,7 @@ fun DashboardGridEngine(
     onUpdateCards: (List<CardItem>) -> Unit = {},
     onDoneEdit: () -> Unit = {},
     onResetDefaults: () -> Unit = {},
+    onDoubleTap: (() -> Unit)? = null,
     onExpandMusic: (() -> Unit)? = null
 ) {
     var showAddCardDialog by remember { mutableStateOf(false) }
@@ -47,17 +50,19 @@ fun DashboardGridEngine(
             .fillMaxSize()
             .combinedClickable(
                 onClick = {},
+                onDoubleClick = onDoubleTap,
                 onLongClick = onEnterEditMode
             )
     ) {
         val isLandscape = maxWidth > 550.dp
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // Edit mode toolbar
+            // Edit mode toolbar: Frosted Samsung One UI aesthetic
             if (isEditMode) {
                 Surface(
-                    color = SurfaceVariantDark,
-                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xCC18181A),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 14.dp)
@@ -65,45 +70,58 @@ fun DashboardGridEngine(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "CUSTOMIZE GRID",
                             style = MaterialTheme.typography.labelSmall,
-                            color = AccentBlue,
-                            fontWeight = FontWeight.Bold
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
                         )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             // Add Card Button
                             IconButton(
                                 onClick = { showAddCardDialog = true },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(Color.White.copy(alpha = 0.12f))
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add card", tint = AccentBlue)
+                                Icon(Icons.Default.Add, contentDescription = "Add card", tint = Color.White, modifier = Modifier.size(20.dp))
                             }
 
                             // Reset Button
                             IconButton(
                                 onClick = onResetDefaults,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(Color.White.copy(alpha = 0.12f))
                             ) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Reset", tint = TextSecondary)
+                                Icon(Icons.Default.Refresh, contentDescription = "Reset", tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
                             }
 
-                            // Done Button
+                            // Done Button: Samsung One UI style pure white pill with black text
                             Button(
                                 onClick = onDoneEdit,
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                modifier = Modifier.height(32.dp)
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(20.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                                modifier = Modifier.height(34.dp)
                             ) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = PureBlack, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Done", color = PureBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Done", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -261,9 +279,9 @@ fun DashboardGridEngine(
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    color = SurfaceDark,
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, SurfaceVariantDark),
+                    color = Color(0xF518181A),
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
                     modifier = Modifier
                         .fillMaxWidth(if (isLandscape) 0.65f else 0.90f)
                         .padding(16.dp)
@@ -274,8 +292,8 @@ fun DashboardGridEngine(
                         )
                 ) {
                     Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -286,20 +304,20 @@ fun DashboardGridEngine(
                                 text = "Add Card to Grid",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                color = Color.White
                             )
                             IconButton(
                                 onClick = { showAddCardDialog = false },
                                 modifier = Modifier.size(30.dp)
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White.copy(alpha = 0.7f))
                             }
                         }
 
                         Text(
                             text = "Tap a card to add or restore it on your dashboard:",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = Color.White.copy(alpha = 0.60f)
                         )
 
                         allTypes.forEach { type ->
@@ -310,15 +328,15 @@ fun DashboardGridEngine(
                                     onUpdateCards(cards + CardItem(id = newId, type = type))
                                     showAddCardDialog = false
                                 },
-                                color = if (isAdded) SurfaceDark else SurfaceVariantDark,
-                                shape = RoundedCornerShape(10.dp),
-                                border = if (isAdded) BorderStroke(1.dp, SurfaceVariantDark) else null,
+                                color = if (isAdded) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isAdded) 0.08f else 0.15f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -326,13 +344,13 @@ fun DashboardGridEngine(
                                         Text(
                                             text = type.displayName,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            color = TextPrimary
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
                                         )
                                         Text(
                                             text = type.defaultTitle,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = TextSecondary
+                                            color = Color.White.copy(alpha = 0.60f)
                                         )
                                     }
 
@@ -340,15 +358,24 @@ fun DashboardGridEngine(
                                         Text(
                                             text = "On Screen (+)",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = AccentBlue
+                                            color = Color.White.copy(alpha = 0.60f),
+                                            fontWeight = FontWeight.Medium
                                         )
                                     } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = "Add",
-                                            tint = AccentBlue,
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                                .background(Color.White.copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Add",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
