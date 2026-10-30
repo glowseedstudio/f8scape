@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.PlayArrow
@@ -32,7 +33,8 @@ import com.f8scape.fold.FoldPosture
 fun DiagnosticsScreen(
     viewModel: DiagnosticsViewModel,
     onNavigateToPreview: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateBack: (() -> Unit)? = null
 ) {
     val report by viewModel.reportState.collectAsState()
     val stateMachineState by viewModel.stateMachine.uiState.collectAsState()
@@ -41,6 +43,13 @@ fun DiagnosticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                        }
+                    }
+                },
                 title = {
                     Column {
                         Text(
@@ -62,9 +71,6 @@ fun DiagnosticsScreen(
                 actions = {
                     IconButton(onClick = { viewModel.refreshReport() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = AccentBlue)
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary)
                     }
                 }
             )

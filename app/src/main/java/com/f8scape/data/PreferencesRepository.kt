@@ -38,7 +38,8 @@ data class UserPreferences(
     val powerProfile: String = "AMBIENT", // AMBIENT or ECO
     val autoEcoOnBatterySaver: Boolean = true,
     val autoOffMinutes: Int = 0, // 0 = Never, 15, 30, 60
-    val suppressOnCalls: Boolean = true
+    val suppressOnCalls: Boolean = true,
+    val hasCompletedOnboarding: Boolean = false
 )
 
 class PreferencesRepository(
@@ -71,6 +72,7 @@ class PreferencesRepository(
         val AUTO_ECO_ON_BATTERY_SAVER = booleanPreferencesKey("auto_eco_on_battery_saver")
         val AUTO_OFF_MINUTES = intPreferencesKey("auto_off_minutes")
         val SUPPRESS_ON_CALLS = booleanPreferencesKey("suppress_on_calls")
+        val HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -108,7 +110,8 @@ class PreferencesRepository(
                 powerProfile = preferences[PreferencesKeys.POWER_PROFILE] ?: "AMBIENT",
                 autoEcoOnBatterySaver = preferences[PreferencesKeys.AUTO_ECO_ON_BATTERY_SAVER] ?: true,
                 autoOffMinutes = preferences[PreferencesKeys.AUTO_OFF_MINUTES] ?: 0,
-                suppressOnCalls = preferences[PreferencesKeys.SUPPRESS_ON_CALLS] ?: true
+                suppressOnCalls = preferences[PreferencesKeys.SUPPRESS_ON_CALLS] ?: true,
+                hasCompletedOnboarding = preferences[PreferencesKeys.HAS_COMPLETED_ONBOARDING] ?: false
             )
         }
 
@@ -257,6 +260,12 @@ class PreferencesRepository(
     suspend fun setSuppressOnCalls(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SUPPRESS_ON_CALLS] = enabled
+        }
+    }
+
+    suspend fun setHasCompletedOnboarding(completed: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.HAS_COMPLETED_ONBOARDING] = completed
         }
     }
 }

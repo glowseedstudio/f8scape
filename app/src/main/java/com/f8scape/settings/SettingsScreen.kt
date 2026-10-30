@@ -49,7 +49,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     preferencesRepository: PreferencesRepository,
-    onNavigateBack: () -> Unit
+    onNavigateBack: (() -> Unit)? = null,
+    onOpenDiagnostics: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -96,18 +97,20 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PureBlack,
-                    titleContentColor = Color.White
+            if (onNavigateBack != null) {
+                TopAppBar(
+                    title = {},
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = PureBlack,
+                        titleContentColor = Color.White
+                    )
                 )
-            )
+            }
         },
         containerColor = PureBlack
     ) { innerPadding ->
@@ -115,8 +118,10 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(top = 18.dp, bottom = 110.dp)
         ) {
             // Large Header Banner
             item {
@@ -126,7 +131,7 @@ fun SettingsScreen(
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "F8scape",
+                        text = "Settings",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -134,7 +139,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Ambient StandBy for Galaxy Z Fold 8",
+                        text = "Configure StandBy behavior, studios & power",
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
@@ -947,6 +952,33 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary
                             )
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    // Hardware & Posture Diagnostics (Moved into Settings for testing)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Hardware & Posture Diagnostics", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text(
+                                text = "Inspect live hinge sensors, cover screen display IDs, and state machine telemetry for testing",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = onOpenDiagnostics,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF26262A)),
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text("Open", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
