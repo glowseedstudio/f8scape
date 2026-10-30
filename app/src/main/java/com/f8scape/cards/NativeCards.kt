@@ -404,6 +404,7 @@ fun AmbientCalendarCard(
     maskTitle: Boolean = false,
     isEditMode: Boolean = false,
     onDayClick: (year: Int, month: Int, day: Int) -> Unit = { _, _, _ -> },
+    onMonthClick: () -> Unit = {},
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null
@@ -465,7 +466,7 @@ fun AmbientCalendarCard(
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
         ) {
-            // Month Header
+            // Month Header (touching smoothly expands the whole overlay into full month calendar)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -473,13 +474,28 @@ fun AmbientCalendarCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = monthName,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.75f),
-                    letterSpacing = 1.sp
-                )
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(enabled = !isEditMode) { onMonthClick() }
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = monthName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.85f),
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Expand Calendar",
+                        tint = Color.White.copy(alpha = 0.45f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
                 if (!hasPermission) {
                     Text(
                         text = "No Permission",
@@ -529,39 +545,50 @@ fun AmbientCalendarCard(
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(26.dp)
+                                        .height(28.dp)
                                         .clip(CircleShape)
                                         .clickable {
                                             onDayClick(currentYear, currentMonth, dayNum)
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Text(
-                                            text = dayNum.toString(),
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isToday) PureBlack else Color.White.copy(alpha = 0.85f),
-                                            textAlign = TextAlign.Center,
-                                            modifier = if (isToday) {
-                                                Modifier
-                                                    .background(Color.White, CircleShape)
-                                                    .size(19.dp)
-                                                    .wrapContentSize(Alignment.Center)
-                                            } else {
-                                                Modifier
-                                            }
-                                        )
-                                        if (hasEvents && !isToday) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .padding(top = 1.dp)
-                                                    .size(2.5.dp)
-                                                    .background(Color.White.copy(alpha = 0.85f), CircleShape)
+                                    if (isToday) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .background(Color.White, CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = dayNum.toString(),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = PureBlack,
+                                                textAlign = TextAlign.Center
                                             )
+                                        }
+                                    } else {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                text = dayNum.toString(),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Normal,
+                                                color = Color.White.copy(alpha = 0.85f),
+                                                textAlign = TextAlign.Center
+                                            )
+                                            if (hasEvents) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .padding(top = 1.5.dp)
+                                                        .size(2.5.dp)
+                                                        .background(Color.White.copy(alpha = 0.85f), CircleShape)
+                                                )
+                                            } else {
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                            }
                                         }
                                     }
                                 }

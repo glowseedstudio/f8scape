@@ -1,10 +1,20 @@
 package com.f8scape.dashboard
 
 import android.graphics.Bitmap
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,13 +35,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -58,6 +73,13 @@ import java.util.Locale
 
 data class CalendarDaySelection(val year: Int, val month: Int, val day: Int)
 
+private enum class DashboardScreen {
+    GRID,
+    FULL_MUSIC,
+    FULL_MONTH_CALENDAR,
+    DAY_CALENDAR
+}
+
 @Composable
 fun StandbyDashboard(
     onDismissRequest: () -> Unit
@@ -71,9 +93,17 @@ fun StandbyDashboard(
     var lastInteractionTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isEditMode by remember { mutableStateOf(false) }
     var isFullMusicMode by remember { mutableStateOf(false) }
+    var isFullMonthCalendarMode by remember { mutableStateOf(false) }
     var selectedCalendarDay by remember { mutableStateOf<CalendarDaySelection?>(null) }
-    var localContentBrightness by remember(preferences.contentBrightness) {
+    var localContentBrightness by remember {
         mutableFloatStateOf(preferences.contentBrightness)
+    }
+    var isDraggingBrightness by remember { mutableStateOf(false) }
+
+    LaunchedEffect(preferences.contentBrightness) {
+        if (!isDraggingBrightness) {
+            localContentBrightness = preferences.contentBrightness
+        }
     }
 
     // Cards state loaded from DataStore preferences
@@ -151,6 +181,13 @@ fun StandbyDashboard(
     val trackInfo by MediaPlaybackRepository.mediaTrackState.collectAsState()
     val showFullMusic = isFullMusicMode && trackInfo.hasActiveSession
 
+    val currentScreen = when {
+        selectedCalendarDay != null -> DashboardScreen.DAY_CALENDAR
+        isFullMonthCalendarMode -> DashboardScreen.FULL_MONTH_CALENDAR
+        showFullMusic -> DashboardScreen.FULL_MUSIC
+        else -> DashboardScreen.GRID
+    }
+
     // Choose active background: Playing song artwork takes priority; falls back to system wallpaper
     val activeBackgroundArtwork = remember(trackInfo.isPlaying, trackInfo.artwork, wallpaperBitmap, preferences.showWallpaperBackground) {
         if (trackInfo.isPlaying && trackInfo.artwork != null) {
@@ -186,7 +223,7 @@ fun StandbyDashboard(
                         onDismissRequest()
                     },
                     onLongPress = {
-                        if (!isFullMusicMode && !isEditMode) {
+                        if (currentScreen == DashboardScreen.GRID && !isEditMode) {
                             isEditMode = true
                         }
                     }
@@ -223,14 +260,24 @@ fun StandbyDashboard(
                 .fillMaxSize()
                 .padding(18.dp)
                 .offset { animatedBurnInOffset }
-                .alpha(localContentBrightness)
+                .graphicsLayer { alpha = localContentBrightness }
         ) {
-            // Top-left back chevron when in Full Music Mode or Calendar Overlay Mode
-            if (showFullMusic || selectedCalendarDay != null) {
+            // Top-left back chevron when in Full Music Mode, Full Month Calendar, or Day Calendar
+            if (currentScreen != DashboardScreen.GRID && !isEditMode) {
                 IconButton(
                     onClick = {
-                        isFullMusicMode = false
-                        selectedCalendarDay = null
+                        when (currentScreen) {
+                            DashboardScreen.DAY_CALENDAR -> {
+                                selectedCalendarDay = null
+                            }
+                            DashboardScreen.FULL_MONTH_CALENDAR -> {
+                                isFullMonthCalendarMode = false
+                            }
+                            DashboardScreen.FULL_MUSIC -> {
+                                isFullMusicMode = false
+                            }
+                            DashboardScreen.GRID -> {}
+                        }
                     },
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -238,7 +285,7 @@ fun StandbyDashboard(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back to dashboard",
+                        contentDescription = "Back",
                         tint = TextTertiary
                     )
                 }
@@ -256,81 +303,109 @@ fun StandbyDashboard(
                 }
             }
 
-            if (selectedCalendarDay != null) {
-                // Full Calendar Overlay: Date & Day typography on the left, daily entries list on the right
-                ExpandedCalendarView(
-                    selection = selectedCalendarDay!!,
-                    maskTitle = preferences.calendarMaskLocked,
-                    onDoubleTap = onDismissRequest,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 28.dp, bottom = 20.dp)
-                )
-            } else if (showFullMusic) {
-                // Full Music View: Album Art where clock was, expanded controls on the side
-                ExpandedMusicView(
-                    trackInfo = trackInfo,
-                    onDoubleTap = onDismissRequest,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 28.dp, bottom = 20.dp)
-                )
-            } else {
-                // Snap-to-Grid Card Engine
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = if (isEditMode) 0.dp else 24.dp, bottom = 28.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    DashboardGridEngine(
-                        cards = localCards,
-                        currentTimeMs = currentTimeMs,
-                        weatherCity = preferences.weatherCity,
-                        maskCalendar = preferences.calendarMaskLocked,
-                        isEditMode = isEditMode,
-                        onEnterEditMode = { isEditMode = true },
-                        onUpdateCards = { updated ->
-                            localCards = updated
-                            coroutineScope.launch {
-                                preferencesRepo.setCustomLayout(DefaultCardLayouts.serialize(updated))
-                            }
-                        },
-                        onDoneEdit = { isEditMode = false },
-                        onResetDefaults = {
-                            val defaultList = when (preferences.activePreset) {
-                                "Minimal" -> DefaultCardLayouts.getMinimalLayout()
-                                "Media" -> DefaultCardLayouts.getMediaLayout()
-                                else -> DefaultCardLayouts.getDashboardLayout()
-                            }
-                            localCards = defaultList
-                            coroutineScope.launch {
-                                preferencesRepo.setCustomLayout("")
-                            }
-                        },
-                        onDoubleTap = onDismissRequest,
-                        onExpandMusic = { isFullMusicMode = true },
-                        onSelectCalendarDay = { year, month, day ->
-                            selectedCalendarDay = CalendarDaySelection(year, month, day)
-                        }
-                    )
-                }
-
-                // Bottom ambient hint
-                if (!isEditMode) {
-                    Text(
-                        text = "F8scape · Long press to customize · Double tap to exit",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextTertiary,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .alpha(0.45f)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onDismissRequest
+            // Smooth crossfade transitions between Dashboard screens
+            AnimatedContent(
+                targetState = currentScreen,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) togetherWith
+                    fadeOut(animationSpec = tween(250, easing = FastOutSlowInEasing))
+                },
+                label = "DashboardScreenTransition"
+            ) { screen ->
+                when (screen) {
+                    DashboardScreen.DAY_CALENDAR -> {
+                        selectedCalendarDay?.let { selection ->
+                            ExpandedCalendarView(
+                                selection = selection,
+                                maskTitle = preferences.calendarMaskLocked,
+                                onDoubleTap = onDismissRequest,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(top = 28.dp, bottom = 20.dp)
                             )
-                    )
+                        }
+                    }
+                    DashboardScreen.FULL_MONTH_CALENDAR -> {
+                        ExpandedMonthCalendarView(
+                            onDayClick = { year, month, day ->
+                                selectedCalendarDay = CalendarDaySelection(year, month, day)
+                            },
+                            maskTitle = preferences.calendarMaskLocked,
+                            onDoubleTap = onDismissRequest,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 28.dp, bottom = 20.dp)
+                        )
+                    }
+                    DashboardScreen.FULL_MUSIC -> {
+                        ExpandedMusicView(
+                            trackInfo = trackInfo,
+                            onDoubleTap = onDismissRequest,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 28.dp, bottom = 20.dp)
+                        )
+                    }
+                    DashboardScreen.GRID -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = if (isEditMode) 0.dp else 24.dp, bottom = 28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            DashboardGridEngine(
+                                cards = localCards,
+                                currentTimeMs = currentTimeMs,
+                                weatherCity = preferences.weatherCity,
+                                maskCalendar = preferences.calendarMaskLocked,
+                                isEditMode = isEditMode,
+                                onEnterEditMode = { isEditMode = true },
+                                onUpdateCards = { updated ->
+                                    localCards = updated
+                                    coroutineScope.launch {
+                                        preferencesRepo.setCustomLayout(DefaultCardLayouts.serialize(updated))
+                                    }
+                                },
+                                onDoneEdit = { isEditMode = false },
+                                onResetDefaults = {
+                                    val defaultList = when (preferences.activePreset) {
+                                        "Minimal" -> DefaultCardLayouts.getMinimalLayout()
+                                        "Media" -> DefaultCardLayouts.getMediaLayout()
+                                        else -> DefaultCardLayouts.getDashboardLayout()
+                                    }
+                                    localCards = defaultList
+                                    coroutineScope.launch {
+                                        preferencesRepo.setCustomLayout("")
+                                    }
+                                },
+                                onDoubleTap = onDismissRequest,
+                                onExpandMusic = { isFullMusicMode = true },
+                                onExpandMonthCalendar = { isFullMonthCalendarMode = true },
+                                onSelectCalendarDay = { year, month, day ->
+                                    selectedCalendarDay = CalendarDaySelection(year, month, day)
+                                }
+                            )
+
+                            // Clean, understated bottom ambient hint (no app name)
+                            if (!isEditMode) {
+                                Text(
+                                    text = "Hold to customize · Double tap to exit",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextTertiary,
+                                    fontSize = 11.sp,
+                                    letterSpacing = 0.5.sp,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .alpha(0.35f)
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = onDismissRequest
+                                        )
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -341,23 +416,22 @@ fun StandbyDashboard(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .fillMaxHeight()
-                    .width(180.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onDoubleTap = { onDismissRequest() },
-                            onLongPress = {
-                                if (!isFullMusicMode && selectedCalendarDay == null) isEditMode = true
-                            }
-                        )
-                    }
+                    .width(220.dp)
+                    .padding(top = 64.dp, bottom = 48.dp)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
+                            onDragStart = {
+                                isDraggingBrightness = true
+                                lastInteractionTimeMs = System.currentTimeMillis()
+                            },
                             onDragEnd = {
+                                isDraggingBrightness = false
                                 coroutineScope.launch {
                                     preferencesRepo.setContentBrightness(localContentBrightness)
                                 }
                             },
                             onDragCancel = {
+                                isDraggingBrightness = false
                                 coroutineScope.launch {
                                     preferencesRepo.setContentBrightness(localContentBrightness)
                                 }
@@ -365,7 +439,7 @@ fun StandbyDashboard(
                             onVerticalDrag = { change, dragAmount ->
                                 change.consume()
                                 lastInteractionTimeMs = System.currentTimeMillis()
-                                val delta = -dragAmount / 450f
+                                val delta = -dragAmount / 350f
                                 localContentBrightness = (localContentBrightness + delta).coerceIn(0.15f, 1.0f)
                             }
                         )
@@ -494,7 +568,17 @@ private fun ExpandedMusicView(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Lightweight, GPU-accelerated animated sine wave line (halts when paused)
+            AmbientSineWaveLine(
+                isPlaying = trackInfo.isPlaying,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Large Controls
             Row(
@@ -723,3 +807,263 @@ private fun ExpandedCalendarView(
         }
     }
 }
+
+/**
+ * Lightweight, hardware-accelerated dual-sine wave visualizer.
+ * Efficiently windowed with a Hann taper at the left and right edges.
+ * Halts all animation frames when audio is not playing to save CPU and battery.
+ */
+@Composable
+private fun AmbientSineWaveLine(
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val phase by if (isPlaying) {
+        val infiniteTransition = rememberInfiniteTransition(label = "SineWaveLoop")
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = (2 * Math.PI).toFloat(),
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 3200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "SinePhase"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val primaryPath = remember { Path() }
+    val secondaryPath = remember { Path() }
+
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(28.dp)
+    ) {
+        val width = size.width
+        val height = size.height
+        val midY = height / 2f
+        val maxAmp = if (isPlaying) 6.dp.toPx() else 0f
+
+        primaryPath.reset()
+        secondaryPath.reset()
+
+        val steps = 64
+        val dx = width / steps
+
+        for (i in 0..steps) {
+            val x = i * dx
+            val normX = (x / width).coerceIn(0f, 1f)
+            // Hann window taper to make edges smoothly taper to 0
+            val taper = Math.sin(Math.PI * normX).toFloat()
+            val amp = maxAmp * taper
+
+            val y1 = midY + amp * Math.sin(2.0 * Math.PI * (x / 140.dp.toPx()) - phase).toFloat()
+            val y2 = midY + (amp * 0.65f) * Math.sin(2.6 * Math.PI * (x / 140.dp.toPx()) - (phase * 1.25) + 0.8).toFloat()
+
+            if (i == 0) {
+                primaryPath.moveTo(x, y1)
+                secondaryPath.moveTo(x, y2)
+            } else {
+                primaryPath.lineTo(x, y1)
+                secondaryPath.lineTo(x, y2)
+            }
+        }
+
+        if (isPlaying) {
+            drawPath(
+                path = secondaryPath,
+                color = AccentBlue.copy(alpha = 0.45f),
+                style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round)
+            )
+        }
+
+        drawPath(
+            path = primaryPath,
+            color = if (isPlaying) Color.White.copy(alpha = 0.70f) else Color.White.copy(alpha = 0.18f),
+            style = Stroke(width = if (isPlaying) 2.dp.toPx() else 1.dp.toPx(), cap = StrokeCap.Round)
+        )
+    }
+}
+
+/**
+ * Expanded full-month ambient calendar view:
+ * Displays a spacious, elegant One UI month grid with M T W T F S S,
+ * centered today circle, event dots, and direct tap-to-agenda transitions.
+ */
+@Composable
+private fun ExpandedMonthCalendarView(
+    onDayClick: (year: Int, month: Int, day: Int) -> Unit,
+    maskTitle: Boolean = false,
+    onDoubleTap: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val calendarProvider = remember { CalendarDataProvider(context) }
+    val hasPermission = remember { calendarProvider.hasCalendarPermission() }
+
+    val todayCal = remember { Calendar.getInstance() }
+    val currentYear = remember { todayCal.get(Calendar.YEAR) }
+    val currentMonth = remember { todayCal.get(Calendar.MONTH) }
+    val todayDay = remember { todayCal.get(Calendar.DAY_OF_MONTH) }
+
+    var eventsByDay by remember { mutableStateOf<Map<Int, List<CalendarEventInfo>>>(emptyMap()) }
+
+    LaunchedEffect(hasPermission) {
+        if (hasPermission) {
+            eventsByDay = calendarProvider.getEventsForMonth(currentYear, currentMonth, maskTitle)
+        }
+    }
+
+    val monthCal = remember(currentYear, currentMonth) {
+        Calendar.getInstance().apply {
+            set(Calendar.YEAR, currentYear)
+            set(Calendar.MONTH, currentMonth)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+    }
+    val monthName = remember(monthCal) {
+        SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(monthCal.time).uppercase()
+    }
+    val daysInMonth = remember(monthCal) { monthCal.getActualMaximum(Calendar.DAY_OF_MONTH) }
+    val firstDayOfWeek = remember(monthCal) { monthCal.get(Calendar.DAY_OF_WEEK) }
+    val leadingEmptyDays = (firstDayOfWeek - Calendar.MONDAY + 7) % 7
+    val weekDays = listOf("M", "T", "W", "T", "F", "S", "S")
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .pointerInput(Unit) {
+                if (onDoubleTap != null) {
+                    detectTapGestures(onDoubleTap = { onDoubleTap() })
+                }
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Month Title Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = monthName,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                color = Color.White
+            )
+            Text(
+                text = "Tap a day to view schedule",
+                fontSize = 12.sp,
+                color = TextTertiary
+            )
+        }
+
+        // Days of week header (M T W T F S S)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            weekDays.forEach { dayName ->
+                Text(
+                    text = dayName,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.45f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // Spacious Month Days Grid
+        val totalCells = leadingEmptyDays + daysInMonth
+        val numRows = (totalCells + 6) / 7
+
+        Column(
+            modifier = Modifier.fillMaxWidth(0.85f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            for (r in 0 until numRows) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (c in 0..6) {
+                        val cellIndex = r * 7 + c
+                        val dayNum = cellIndex - leadingEmptyDays + 1
+                        if (dayNum in 1..daysInMonth) {
+                            val isToday = dayNum == todayDay
+                            val dayEvents = eventsByDay[dayNum]
+                            val hasEvents = !dayEvents.isNullOrEmpty()
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        onDayClick(currentYear, currentMonth, dayNum)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    if (isToday) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .background(Color.White, CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = dayNum.toString(),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = PureBlack,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            text = dayNum.toString(),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.White.copy(alpha = 0.90f),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+
+                                    if (hasEvents) {
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .size(4.dp)
+                                                .background(AccentBlue, CircleShape)
+                                        )
+                                    } else {
+                                        Spacer(modifier = Modifier.height(7.dp))
+                                    }
+                                }
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

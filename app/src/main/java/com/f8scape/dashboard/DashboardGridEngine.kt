@@ -42,6 +42,7 @@ fun DashboardGridEngine(
     onResetDefaults: () -> Unit = {},
     onDoubleTap: (() -> Unit)? = null,
     onExpandMusic: (() -> Unit)? = null,
+    onExpandMonthCalendar: (() -> Unit)? = null,
     onSelectCalendarDay: ((year: Int, month: Int, day: Int) -> Unit)? = null
 ) {
     var showAddCardDialog by remember { mutableStateOf(false) }
@@ -196,6 +197,7 @@ fun DashboardGridEngine(
                                         onUpdateCards(cards.filter { it.id != item.id })
                                     },
                                     onExpandMusic = onExpandMusic,
+                                    onExpandMonthCalendar = onExpandMonthCalendar,
                                     onSelectCalendarDay = onSelectCalendarDay
                                 )
                             }
@@ -220,6 +222,7 @@ fun DashboardGridEngine(
                                         { onUpdateCards(cards.filter { it.id != item.id }) }
                                     } else null,
                                     onExpandMusic = onExpandMusic,
+                                    onExpandMonthCalendar = onExpandMonthCalendar,
                                     onSelectCalendarDay = onSelectCalendarDay
                                 )
                             }
@@ -259,6 +262,7 @@ fun DashboardGridEngine(
                                 { onUpdateCards(cards.filter { it.id != item.id }) }
                             } else null,
                             onExpandMusic = onExpandMusic,
+                            onExpandMonthCalendar = onExpandMonthCalendar,
                             onSelectCalendarDay = onSelectCalendarDay
                         )
                     }
@@ -402,6 +406,7 @@ private fun RenderCard(
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
     onExpandMusic: (() -> Unit)? = null,
+    onExpandMonthCalendar: (() -> Unit)? = null,
     onSelectCalendarDay: ((year: Int, month: Int, day: Int) -> Unit)? = null
 ) {
     when (item.type) {
@@ -432,6 +437,9 @@ private fun RenderCard(
             isEditMode = isEditMode,
             onDayClick = { year, month, day ->
                 onSelectCalendarDay?.invoke(year, month, day)
+            },
+            onMonthClick = {
+                onExpandMonthCalendar?.invoke()
             },
             onMoveUp = onMoveUp,
             onMoveDown = onMoveDown,
