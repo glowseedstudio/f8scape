@@ -68,8 +68,8 @@ class StablePoseDetector(
     }
 
     /**
-     * Checks if gravity vector indicates the phone is resting upright or propped at an angle,
-     * typical of a tent posture (neither fully flat on back Z ~ 9.8, nor horizontal flat screen).
+     * Checks if gravity vector indicates the phone is resting horizontally in landscape tent posture.
+     * Rejects normal upright portrait posture (normalizedY > 0.60) and flat on table (normalizedZ > 0.85).
      */
     @Synchronized
     fun isTentOrientationCandidate(): Boolean {
@@ -80,11 +80,20 @@ class StablePoseDetector(
         val normalizedY = abs(lastGravityY / totalG)
         val normalizedX = abs(lastGravityX / totalG)
 
-        // In tent posture resting on edges, the device is tilted between 45 and 85 degrees
-        // meaning neither Z is dominant (not lying flat) nor purely vertical
-        val isNotLyingFlat = normalizedZ < 0.85f
-        val isTilted = (normalizedY > 0.25f || normalizedX > 0.25f)
-        return isNotLyingFlat && isTilted
+        // Portrait upright: normalizedY is dominant (~0.7 to 1.0) -> MUST BE REJECTED
+        val isPortraitUpright = normalizedY > 0.60f
+        if (isPortraitUpright) return false
+
+        // Flat on table (front or back): normalizedZ is dominant (> 0.85) -> REJECTED
+        val isLyingFlat = normalizedZ > 0.85f
+        if (isLyingFlat) return false
+
+        // In landscape tent posture: phone rests horizontally along long edge (normalizedY < 0.45)
+        // and face is tilted (normalizedX between 0.25 and 0.92, normalizedZ between 0.15 and 0.85)
+        val isLandscapeResting = normalizedY < 0.45f
+        val isTilted = normalizedX in 0.25f..0.92f && normalizedZ in 0.15f..0.85f
+
+        return isLandscapeResting && isTilted
     }
 
     @Synchronized

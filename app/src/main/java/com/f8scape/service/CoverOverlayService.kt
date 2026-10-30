@@ -4,9 +4,9 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
-import android.view.Gravity
-import android.view.View
-import android.view.WindowManager
+import android.os.Handler
+import android.os.Looper
+import android.view.*
 import android.view.accessibility.AccessibilityEvent
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
@@ -37,6 +37,7 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
 
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
 
@@ -60,71 +61,100 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
         F8Log.i("CoverOverlayService", "Accessibility service connected")
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Monitored for window transitions
-    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 
     override fun onInterrupt() {
         F8Log.w("CoverOverlayService", "Accessibility service interrupted")
+        removeStandbyOverlay()
     }
 
     fun showStandbyOverlay() {
-        if (overlayView != null) return
+        mainHandler.post {
+            if (overlayView != null) return@post
 
-        try {
-            val composeView = ComposeView(this).apply {
-                setViewTreeLifecycleOwner(this@CoverOverlayService)
-                setViewTreeSavedStateRegistryOwner(this@CoverOverlayService)
-                setContent {
-                    F8scapeTheme {
-                        StandbyDashboard(
-                            onDismissRequest = {
-                                removeStandbyOverlay()
-                            }
-                        )
+            try {
+                val composeView = ComposeView(this).apply {
+                    setViewTreeLifecycleOwner(this@CoverOverlayService)
+                    setViewTreeSavedStateRegistryOwner(this@CoverOverlayService)
+                    setContent {
+                        F8scapeTheme {
+                            StandbyDashboard(
+                                onDismissRequest = {
+                                    removeStandbyOverlay()
+                                }
+                            )
+                        }
                     }
                 }
-            }
 
-            val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
-            } else {
+                // Fullscreen immersive: completely hide status and navigation bars
+                composeView.fitsSystemWindows = false
                 @Suppress("DEPRECATION")
-                WindowManager.LayoutParams.TYPE_PHONE
-            }
+                composeView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or View.SYSTEM_UI_FLAG_LOW_PROFILE
+                )
 
-            val params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                layoutType,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                PixelFormat.TRANSLUCENT
-            ).apply {
-                gravity = Gravity.CENTER
-            }
+                val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                } else {
+                    @Suppress("DEPRECATION")
+                    WindowManager.LayoutParams.TYPE_PHONE
+                }
 
-            windowManager?.addView(composeView, params)
-            overlayView = composeView
-            F8Log.i("CoverOverlayService", "Presented Standby overlay via Accessibility window")
-        } catch (e: Exception) {
-            F8Log.e("CoverOverlayService", "Failed to add overlay window, falling back to DashboardActivity", e)
-            val intent = DashboardActivity.createIntent(this)
-            startActivity(intent)
+                val params = WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    layoutType,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                            WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                            WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
+                    PixelFormat.TRANSLUCENT
+                ).apply {
+                    gravity = Gravity.CENTER
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    }
+                }
+
+                windowManager?.addView(composeView, params)
+                overlayView = composeView
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    composeView.windowInsetsController?.let { controller ->
+                        controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                        controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    }
+                }
+
+                F8Log.i("CoverOverlayService", "Presented full-screen Standby overlay with status bar hidden")
+            } catch (e: Exception) {
+                F8Log.e("CoverOverlayService", "Failed to add overlay window, falling back to DashboardActivity", e)
+                val intent = DashboardActivity.createIntent(this)
+                startActivity(intent)
+            }
         }
     }
 
     fun removeStandbyOverlay() {
-        overlayView?.let { view ->
-            try {
-                windowManager?.removeView(view)
-                F8Log.i("CoverOverlayService", "Removed Standby overlay")
-            } catch (e: Exception) {
-                F8Log.e("CoverOverlayService", "Failed to remove overlay window", e)
+        mainHandler.post {
+            overlayView?.let { view ->
+                try {
+                    windowManager?.removeView(view)
+                    F8Log.i("CoverOverlayService", "Removed Standby overlay")
+                } catch (e: Exception) {
+                    F8Log.e("CoverOverlayService", "Failed to remove overlay window", e)
+                }
             }
+            overlayView = null
         }
-        overlayView = null
     }
 
     override fun onDestroy() {

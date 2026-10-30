@@ -24,7 +24,7 @@ class DiagnosticsViewModel(
     private val probe = HardwareProbe(application)
     private val sensorSource = SensorPostureSource(application)
     private val screenRepo = ScreenStateRepository(application)
-    val stateMachine = StandbyStateMachine()
+    val stateMachine = (application as? com.f8scape.F8scapeApplication)?.automationCoordinator?.stateMachine ?: StandbyStateMachine()
 
     private val _reportState = MutableStateFlow<DiagnosticsReport?>(null)
     val reportState: StateFlow<DiagnosticsReport?> = _reportState.asStateFlow()
