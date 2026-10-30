@@ -2,6 +2,19 @@
 
 All notable changes to **F8scape** are documented in this file.
 
+## [1.0.1] - 2026-10-30
+
+### Fixed & Enhanced
+- **Quick Settings Tent Icon:** Corrected the vector geometry in `ic_qs_standby.xml` by swapping the stroke lines so the camera module sits on the outside face rather than the interior fold, with balanced tent slopes.
+- **System Wallpaper Extraction (Android 13+ / One UI 9):**
+  - Added `MANAGE_EXTERNAL_STORAGE` permission (`All Files Access`) to allow lawful extraction of the active system wallpaper bitmap via `WallpaperManager.getDrawable()`.
+  - Added an intuitive **Enable Access** module card on the Home Screen and inline grant card in Settings.
+  - StandBy automatically detects when wallpaper access is granted and displays the ambient Ken Burns background.
+- **Smooth Cinema-Grade Entrance Animations:**
+  - Added an organic 1000ms entrance animation (`alpha` and `0.98` $\to$ `1.0` scale) when entering StandBy.
+  - Added 950ms decelerate fade-in and 350ms accelerate fade-out transitions to `CoverOverlayService`.
+- **First-Open Setup Flow:** Upgraded onboarding into a smooth 4-page wizard with automatic page progression on permission grant and an "All Set" confirmation card.
+
 ## [1.0.0] - 2026-10-30
 
 ### Added

@@ -146,10 +146,17 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                     }
                 }
 
+                composeView.alpha = 0f
                 windowManager?.addView(composeView, params)
                 overlayView = composeView
 
-                F8Log.i("CoverOverlayService", "Presented full-screen Standby overlay with status bar hidden")
+                composeView.animate()
+                    .alpha(1f)
+                    .setDuration(950)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator(1.8f))
+                    .start()
+
+                F8Log.i("CoverOverlayService", "Presented full-screen Standby overlay with smooth fade-in")
             } catch (e: Exception) {
                 F8Log.e("CoverOverlayService", "Failed to add overlay window, falling back to DashboardActivity", e)
                 val intent = DashboardActivity.createIntent(this)
@@ -160,15 +167,27 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
 
     fun removeStandbyOverlay() {
         mainHandler.post {
-            overlayView?.let { view ->
+            val view = overlayView ?: return@post
+            overlayView = null
+            try {
+                view.animate()
+                    .alpha(0f)
+                    .setDuration(350)
+                    .setInterpolator(android.view.animation.AccelerateInterpolator(1.5f))
+                    .withEndAction {
+                        try {
+                            windowManager?.removeView(view)
+                            F8Log.i("CoverOverlayService", "Removed Standby overlay")
+                        } catch (e: Exception) {
+                            F8Log.e("CoverOverlayService", "Failed to remove overlay window", e)
+                        }
+                    }
+                    .start()
+            } catch (e: Exception) {
                 try {
                     windowManager?.removeView(view)
-                    F8Log.i("CoverOverlayService", "Removed Standby overlay")
-                } catch (e: Exception) {
-                    F8Log.e("CoverOverlayService", "Failed to remove overlay window", e)
-                }
+                } catch (_: Exception) {}
             }
-            overlayView = null
         }
     }
 

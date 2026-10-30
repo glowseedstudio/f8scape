@@ -192,12 +192,14 @@ fun StandbyDashboard(
 
     // Load system wallpaper for ambient background when music is idle
     var wallpaperBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(preferences.showWallpaperBackground) {
+    LaunchedEffect(preferences.showWallpaperBackground, currentTimeMs / 30_000L) {
         if (preferences.showWallpaperBackground) {
-            wallpaperBitmap = WallpaperHelper.getWallpaperBitmap(context)
             if (wallpaperBitmap == null) {
-                delay(800L)
                 wallpaperBitmap = WallpaperHelper.getWallpaperBitmap(context)
+                if (wallpaperBitmap == null) {
+                    delay(800L)
+                    wallpaperBitmap = WallpaperHelper.getWallpaperBitmap(context)
+                }
             }
         } else {
             wallpaperBitmap = null
@@ -227,6 +229,18 @@ fun StandbyDashboard(
         ),
         label = "PageIndicatorAlpha"
     )
+
+    // Slow, cinema-grade organic entrance transition when waking into Tent Mode
+    val entranceProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) {
+        entranceProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.tween(
+                durationMillis = 1000,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing
+            )
+        )
+    }
 
     // OLED Burn-In Orbital Drift (8-point minute-boundary cycle)
     val burnInStep = remember(currentTimeMs / 60_000L) {
@@ -359,7 +373,11 @@ fun StandbyDashboard(
                 .fillMaxSize()
                 .padding(18.dp)
                 .offset { animatedBurnInOffset }
-                .graphicsLayer { alpha = localContentBrightness }
+                .graphicsLayer {
+                    alpha = localContentBrightness * entranceProgress.value
+                    scaleX = 0.98f + (0.02f * entranceProgress.value)
+                    scaleY = 0.98f + (0.02f * entranceProgress.value)
+                }
         ) {
             // Top-left back chevron when in Paged Mode or Calendar Overlay Mode
             if (currentScreen != DashboardScreen.GRID && !isEditMode) {

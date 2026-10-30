@@ -83,7 +83,7 @@ F8scape asks for the absolute minimum permissions needed to function. When you f
 
 ## 📦 Installation
 
-1. Download the latest `F8scape-v1.0.0.apk` from the [**Releases**](../../releases) page on your Galaxy Z Fold 8.
+1. Download the latest `F8scape-v1.0.1.apk` from the [**Releases**](../../releases) page on your Galaxy Z Fold 8.
 2. Open the APK to install it.
 3. Launch **F8scape** and complete the quick 2-step setup (**Accessibility Service** and **Appear on Top**).
 4. *(Optional)* Enable **Music & Media Controls**, **Calendar Events**, or customize your **Weather City & Unit (`°C` / `°F`)** right from the Home tab.

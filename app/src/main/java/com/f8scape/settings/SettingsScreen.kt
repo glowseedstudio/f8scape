@@ -32,6 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.f8scape.app.theme.*
 import com.f8scape.cards.CalendarStyle
 import com.f8scape.cards.ClockColorOption
@@ -62,6 +65,26 @@ fun SettingsScreen(
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
         )
+    }
+    var isWallpaperGranted by remember {
+        mutableStateOf(WallpaperHelper.hasWallpaperPermission(context))
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasCalendarPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_CALENDAR
+                ) == PackageManager.PERMISSION_GRANTED
+                isWallpaperGranted = WallpaperHelper.hasWallpaperPermission(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
@@ -277,6 +300,50 @@ fun SettingsScreen(
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowWallpaperBackground(it) } },
                             colors = defaultSwitchColors
                         )
+                    }
+
+                    if (preferences.showWallpaperBackground && !isWallpaperGranted) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            onClick = { WallpaperHelper.requestWallpaperPermission(context) },
+                            shape = RoundedCornerShape(14.dp),
+                            color = StatusWarning.copy(alpha = 0.12f),
+                            border = BorderStroke(0.5.dp, StatusWarning.copy(alpha = 0.40f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "All Files Access Required",
+                                        color = StatusWarning,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "Android requires All Files Access so F8scape can extract your system wallpaper",
+                                        color = TextSecondary,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = StatusWarning
+                                ) {
+                                    Text(
+                                        text = "Grant",
+                                        color = Color.Black,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -930,6 +997,35 @@ fun SettingsScreen(
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                         ) {
                             Text(if (isMediaAccessGranted) "Config" else "Grant", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = TextTertiary, modifier = Modifier.size(13.dp))
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("System Wallpaper Access", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text(
+                                text = if (isWallpaperGranted) "Granted & active" else "Not granted (Requires All Files Access so Android allows extracting the current wallpaper bitmap)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isWallpaperGranted) StatusSuccess else StatusWarning
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                WallpaperHelper.requestWallpaperPermission(context)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF26262A)),
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text(if (isWallpaperGranted) "Config" else "Grant", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = TextTertiary, modifier = Modifier.size(13.dp))
                         }

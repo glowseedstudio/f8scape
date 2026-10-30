@@ -44,6 +44,7 @@ import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
 import com.f8scape.media.F8MediaNotificationListener
 import com.f8scape.service.CoverOverlayService
+import com.f8scape.util.WallpaperHelper
 import kotlinx.coroutines.launch
 
 private val HomeBg = Color(0xFF0A0A0C)
@@ -69,6 +70,9 @@ fun AppHomeScreen(
             ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
         )
     }
+    var isWallpaperGranted by remember {
+        mutableStateOf(WallpaperHelper.hasWallpaperPermission(context))
+    }
 
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -87,6 +91,7 @@ fun AppHomeScreen(
                     context,
                     Manifest.permission.READ_CALENDAR
                 ) == PackageManager.PERMISSION_GRANTED
+                isWallpaperGranted = WallpaperHelper.hasWallpaperPermission(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -466,6 +471,50 @@ fun AppHomeScreen(
                         Switch(
                             checked = preferences.showBattery,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowBattery(it) } },
+                            colors = customSwitchColors
+                        )
+                    }
+                }
+            }
+        }
+
+        // 4. Optional Module: System Wallpaper Background
+        item {
+            OptionalFeatureCard(
+                title = "System Wallpaper as Background",
+                subtitle = if (isWallpaperGranted) {
+                    "Enabled · Active wallpaper extracted for Ken Burns ambient background"
+                } else {
+                    "Optional · Grant All Files Access so Android allows F8scape to extract your current wallpaper"
+                },
+                icon = Icons.Default.Image,
+                isEnabled = isWallpaperGranted && preferences.showWallpaperBackground,
+                statusText = if (isWallpaperGranted && preferences.showWallpaperBackground) "Active" else if (!isWallpaperGranted) "Access Needed" else "Off in Settings",
+                actionButtonLabel = if (!isWallpaperGranted) "Enable Access" else "Settings",
+                onActionClick = {
+                    if (!isWallpaperGranted) {
+                        WallpaperHelper.requestWallpaperPermission(context)
+                    } else {
+                        onOpenSettings()
+                    }
+                }
+            ) {
+                if (isWallpaperGranted) {
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Show Wallpaper as Background", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                            Text("Renders under clock and widgets when music is idle", fontSize = 12.sp, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.showWallpaperBackground,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowWallpaperBackground(it) } },
                             colors = customSwitchColors
                         )
                     }
