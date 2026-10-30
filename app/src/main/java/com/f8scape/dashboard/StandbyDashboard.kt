@@ -603,54 +603,69 @@ private fun ExpandedMusicView(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start
         ) {
-            Text(
-                text = trackInfo.title,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            // Title & Artist container with stable height so line wrapping never shifts controls
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 96.dp),
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Text(
+                    text = trackInfo.title.ifBlank { "Media Playing" },
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-            Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
-                text = trackInfo.artist.ifBlank { trackInfo.album.ifBlank { "Playing" } },
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Normal,
-                color = Color.White.copy(alpha = 0.75f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+                Text(
+                    text = trackInfo.artist.ifBlank { trackInfo.album.ifBlank { "Playing" } },
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.White.copy(alpha = 0.75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Squiggly Progress Bar (Google Media Player-style animated wavy seekbar)
-            if (trackInfo.durationMs > 0) {
-                Spacer(modifier = Modifier.height(18.dp))
-                val currentProgress = (trackInfo.positionMs.toFloat() / trackInfo.durationMs).coerceIn(0f, 1f)
-                SquigglyProgressBar(
-                    progress = currentProgress,
-                    isPlaying = trackInfo.isPlaying,
-                    onSeek = { fraction ->
+            // Statically anchored so it never disappears or causes buttons to jump on track changes
+            val hasValidDuration = trackInfo.durationMs > 0L
+            val currentProgress = if (hasValidDuration) {
+                (trackInfo.positionMs.toFloat() / trackInfo.durationMs).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            SquigglyProgressBar(
+                progress = currentProgress,
+                isPlaying = trackInfo.isPlaying,
+                onSeek = { fraction ->
+                    if (hasValidDuration) {
                         MediaPlaybackRepository.seekTo((fraction * trackInfo.durationMs).toLong())
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = TimeUtils.formatDuration(trackInfo.positionMs),
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.55f)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = TimeUtils.formatDuration(trackInfo.positionMs),
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.55f)
-                    )
-                    Text(
-                        text = TimeUtils.formatDuration(trackInfo.durationMs),
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.55f)
-                    )
-                }
+                Text(
+                    text = if (hasValidDuration) TimeUtils.formatDuration(trackInfo.durationMs) else "--:--",
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.55f)
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))

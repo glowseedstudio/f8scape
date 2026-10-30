@@ -189,34 +189,39 @@ fun AmbientMediaCard(
                         }
                     }
 
-                    // Progress Bar (if duration available)
-                    if (trackInfo.durationMs > 0) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            val currentProgress = (trackInfo.positionMs.toFloat() / trackInfo.durationMs).coerceIn(0f, 1f)
-                            SquigglyProgressBar(
-                                progress = currentProgress,
-                                isPlaying = trackInfo.isPlaying,
-                                onSeek = { fraction ->
+                    // Progress Bar (Always rendered statically - never conditionally removed)
+                    val hasValidDuration = trackInfo.durationMs > 0L
+                    val currentProgress = if (hasValidDuration) {
+                        (trackInfo.positionMs.toFloat() / trackInfo.durationMs).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SquigglyProgressBar(
+                            progress = currentProgress,
+                            isPlaying = trackInfo.isPlaying,
+                            onSeek = { fraction ->
+                                if (hasValidDuration) {
                                     MediaPlaybackRepository.seekTo((fraction * trackInfo.durationMs).toLong())
-                                },
-                                modifier = Modifier.fillMaxWidth()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = TimeUtils.formatDuration(trackInfo.positionMs),
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.50f)
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = TimeUtils.formatDuration(trackInfo.positionMs),
-                                    fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.50f)
-                                )
-                                Text(
-                                    text = TimeUtils.formatDuration(trackInfo.durationMs),
-                                    fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.50f)
-                                )
-                            }
+                            Text(
+                                text = if (hasValidDuration) TimeUtils.formatDuration(trackInfo.durationMs) else "--:--",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.50f)
+                            )
                         }
                     }
 
