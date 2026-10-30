@@ -40,27 +40,27 @@ fun CardContainer(
     onRemove: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(
-                width = if (isEditMode) 1.5.dp else 1.dp,
-                color = if (isEditMode) AccentBlue.copy(alpha = 0.8f) else SurfaceBorder,
-                shape = RoundedCornerShape(18.dp)
-            ),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-        shape = RoundedCornerShape(18.dp)
-    ) {
-        Column(
-            modifier = Modifier
+    if (isEditMode) {
+        Card(
+            modifier = modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .border(
+                    width = 1.dp,
+                    color = AccentBlue.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(14.dp)
+                ),
+            colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark.copy(alpha = 0.35f)),
+            shape = RoundedCornerShape(14.dp)
         ) {
-            if (isEditMode) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                        .padding(bottom = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -83,8 +83,17 @@ fun CardContainer(
                         }
                     }
                 }
+                content()
             }
-
+        }
+    } else {
+        // Pure ambient: No card backgrounds, no borders, no boxes.
+        // Elements float seamlessly on the OLED pure black background.
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 4.dp)
+        ) {
             content()
         }
     }

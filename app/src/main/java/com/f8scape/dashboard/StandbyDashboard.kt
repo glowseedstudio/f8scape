@@ -52,20 +52,36 @@ fun StandbyDashboard(
         }
     }
 
-    // OLED Burn-in mitigation: subtle microscopic shift (1-2px) every 2 minutes
-    val burnInShiftX by remember(currentTimeMs / 120000L) {
-        mutableIntStateOf(((currentTimeMs / 120000L) % 3 - 1).toInt())
+    // OLED Burn-in mitigation: active multi-pixel orbital drift (±12px X, ±10px Y) cycling every minute
+    val minuteStep = (currentTimeMs / 60000L).toInt()
+    val targetBurnInOffset = remember(minuteStep) {
+        when (minuteStep % 8) {
+            0 -> IntOffset(0, 0)
+            1 -> IntOffset(8, 6)
+            2 -> IntOffset(12, 0)
+            3 -> IntOffset(8, -7)
+            4 -> IntOffset(0, -10)
+            5 -> IntOffset(-8, -7)
+            6 -> IntOffset(-12, 0)
+            else -> IntOffset(-8, 6)
+        }
     }
-    val burnInShiftY by remember(currentTimeMs / 120000L) {
-        mutableIntStateOf((((currentTimeMs / 120000L) + 1) % 3 - 1).toInt())
-    }
+
+    val animatedBurnInOffset by androidx.compose.animation.core.animateIntOffsetAsState(
+        targetValue = targetBurnInOffset,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 2000,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
+        ),
+        label = "OledBurnInDrift"
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(PureBlack)
             .padding(18.dp)
-            .offset { IntOffset(burnInShiftX, burnInShiftY) }
+            .offset { animatedBurnInOffset }
     ) {
         // Exit tap target (subtle X button) in top right
         if (!isEditMode) {
