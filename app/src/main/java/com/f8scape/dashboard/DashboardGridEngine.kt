@@ -132,6 +132,7 @@ fun DashboardGridEngine(
                         ) {
                             AmbientClockCard(
                                 currentTimeMs = currentTimeMs,
+                                weatherCity = weatherCity,
                                 isLarge = true,
                                 isEditMode = isEditMode,
                                 onRemove = if (cards.size > 1) {
@@ -242,7 +243,7 @@ fun DashboardGridEngine(
         // Inline Add Card Sheet
         if (showAddCardDialog) {
             val existingTypes = cards.map { it.type }.toSet()
-            val allTypes = CardType.values().filter { it != CardType.SPACER }
+            val allTypes = listOf(CardType.CLOCK, CardType.MEDIA, CardType.CALENDAR)
 
             Box(
                 modifier = Modifier
@@ -369,6 +370,7 @@ private fun RenderCard(
     when (item.type) {
         CardType.CLOCK -> AmbientClockCard(
             currentTimeMs = currentTimeMs,
+            weatherCity = weatherCity,
             isLarge = false,
             isEditMode = isEditMode,
             onMoveUp = onMoveUp,

@@ -102,12 +102,38 @@ fun CardContainer(
 @Composable
 fun AmbientClockCard(
     currentTimeMs: Long,
+    weatherCity: String = "Canberra",
     isLarge: Boolean = true,
     isEditMode: Boolean = false,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    var weatherInfo by remember { mutableStateOf<WeatherInfo?>(null) }
+    val weatherProvider = remember { WeatherDataProvider(context) }
+
+    var batteryPercent by remember { mutableIntStateOf(100) }
+    var isCharging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(weatherCity) {
+        weatherInfo = weatherProvider.getWeather(weatherCity)
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val batteryStatus = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 100
+            val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
+            val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+
+            batteryPercent = if (level >= 0 && scale > 0) (level * 100) / scale else 100
+            isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+
+            delay(15000L)
+        }
+    }
+
     CardContainer(
         isEditMode = isEditMode,
         onMoveUp = onMoveUp,
@@ -118,19 +144,76 @@ fun AmbientClockCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Samsung One UI Clock: Crisp, large, pure white, elegant spacing
             Text(
-                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = true),
-                style = MaterialTheme.typography.displayLarge,
-                fontSize = if (isLarge) 72.sp else 54.sp,
-                fontWeight = FontWeight.ExtraLight,
-                color = TextPrimary
+                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = false),
+                fontSize = if (isLarge) 84.sp else 62.sp,
+                fontWeight = FontWeight.Light,
+                letterSpacing = (-2.0).sp,
+                color = Color.White
             )
+
+            // Date directly under time
             Text(
                 text = TimeUtils.formatDate(currentTimeMs),
-                style = MaterialTheme.typography.titleMedium,
-                color = TextSecondary,
-                modifier = Modifier.padding(top = 4.dp)
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Normal,
+                color = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.padding(top = 2.dp)
             )
+
+            // Premium Ambient Weather & Battery Row directly under the clock
+            Row(
+                modifier = Modifier.padding(top = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Weather
+                val weatherIcon = when (weatherInfo?.condition) {
+                    "Rain", "Showers" -> Icons.Default.WaterDrop
+                    "Thunderstorm" -> Icons.Default.Bolt
+                    "Snow" -> Icons.Default.AcUnit
+                    "Partly Cloudy", "Fog" -> Icons.Default.Cloud
+                    else -> Icons.Default.WbSunny
+                }
+
+                Icon(
+                    imageVector = weatherIcon,
+                    contentDescription = null,
+                    tint = if (weatherInfo?.condition == "Clear" || weatherInfo?.condition == null) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(17.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "${weatherInfo?.tempC ?: 21}°C · ${weatherInfo?.cityName ?: weatherCity}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.White.copy(alpha = 0.75f)
+                )
+
+                // Refined dot separator
+                Text(
+                    text = "·",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.40f),
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                )
+
+                // Battery
+                Icon(
+                    imageVector = if (isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
+                    contentDescription = null,
+                    tint = if (isCharging) Color(0xFF00E676) else Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(17.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "${batteryPercent}%${if (isCharging) " · Charging" else ""}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.White.copy(alpha = 0.75f)
+                )
+            }
         }
     }
 }
@@ -313,8 +396,8 @@ fun AmbientCalendarCard(
             Icon(
                 imageVector = Icons.Default.CalendarToday,
                 contentDescription = null,
-                tint = AccentBlue,
-                modifier = Modifier.size(22.dp)
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -324,24 +407,24 @@ fun AmbientCalendarCard(
                         text = "Calendar access not enabled",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = TextPrimary
+                        color = Color.White
                     )
                     Text(
                         text = "Grant permission in Settings to show events",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextTertiary
+                        color = Color.White.copy(alpha = 0.50f)
                     )
                 } else if (upcomingEvent == null) {
                     Text(
-                        text = "No upcoming events today",
+                        text = "No upcoming events",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = TextPrimary
+                        color = Color.White
                     )
                     Text(
-                        text = "Your schedule is clear",
+                        text = "Schedule is clear",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary
+                        color = Color.White.copy(alpha = 0.60f)
                     )
                 } else {
                     val event = upcomingEvent!!
@@ -349,14 +432,14 @@ fun AmbientCalendarCard(
                         text = event.title,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
-                        color = TextPrimary
+                        color = Color.White
                     )
                     val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
                     val formattedTime = if (event.isAllDay) "All day" else "${timeFormat.format(Date(event.startTimeMs))} - ${timeFormat.format(Date(event.endTimeMs))}"
                     Text(
                         text = formattedTime,
                         style = MaterialTheme.typography.bodySmall,
-                        color = AccentBlue
+                        color = Color.White.copy(alpha = 0.70f)
                     )
                 }
             }

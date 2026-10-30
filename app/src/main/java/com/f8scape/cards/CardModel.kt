@@ -28,15 +28,13 @@ object DefaultCardLayouts {
 
     fun getDashboardLayout(): List<CardItem> = listOf(
         CardItem(id = "clock_main", type = CardType.CLOCK),
-        CardItem(id = "weather_card", type = CardType.WEATHER),
-        CardItem(id = "battery_card", type = CardType.BATTERY),
+        CardItem(id = "media_card", type = CardType.MEDIA),
         CardItem(id = "calendar_card", type = CardType.CALENDAR)
     )
 
     fun getMediaLayout(): List<CardItem> = listOf(
         CardItem(id = "clock_main", type = CardType.CLOCK),
-        CardItem(id = "media_card", type = CardType.MEDIA),
-        CardItem(id = "battery_card", type = CardType.BATTERY)
+        CardItem(id = "media_card", type = CardType.MEDIA)
     )
 
     fun serialize(items: List<CardItem>): String {
@@ -52,7 +50,7 @@ object DefaultCardLayouts {
             }
         }
         return try {
-            serialized.split(",")
+            val parsed = serialized.split(",")
                 .filter { it.isNotBlank() }
                 .map { segment ->
                     val parts = segment.split(":")
@@ -60,6 +58,10 @@ object DefaultCardLayouts {
                     val type = CardType.valueOf(parts[1])
                     CardItem(id = id, type = type)
                 }
+            // Weather and battery are embedded directly into the Clock hero unit.
+            // Filter out standalone legacy cards so the display is clean and unified.
+            val filtered = parsed.filter { it.type != CardType.WEATHER && it.type != CardType.BATTERY }
+            filtered.ifEmpty { getDashboardLayout() }
         } catch (_: Exception) {
             getDashboardLayout()
         }

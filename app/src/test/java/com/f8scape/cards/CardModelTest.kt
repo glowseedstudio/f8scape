@@ -8,11 +8,10 @@ class CardModelTest {
     @Test
     fun defaultDashboardLayout_containsExpectedCards() {
         val layout = DefaultCardLayouts.getDashboardLayout()
-        assertEquals(4, layout.size)
+        assertEquals(3, layout.size)
         assertEquals(CardType.CLOCK, layout[0].type)
-        assertEquals(CardType.WEATHER, layout[1].type)
-        assertEquals(CardType.BATTERY, layout[2].type)
-        assertEquals(CardType.CALENDAR, layout[3].type)
+        assertEquals(CardType.MEDIA, layout[1].type)
+        assertEquals(CardType.CALENDAR, layout[2].type)
     }
 
     @Test
@@ -25,21 +24,21 @@ class CardModelTest {
     @Test
     fun serializationAndDeserialization_preservesCardOrder() {
         val original = listOf(
-            CardItem(id = "weather_1", type = CardType.WEATHER),
             CardItem(id = "clock_1", type = CardType.CLOCK),
-            CardItem(id = "battery_1", type = CardType.BATTERY)
+            CardItem(id = "media_1", type = CardType.MEDIA),
+            CardItem(id = "calendar_1", type = CardType.CALENDAR)
         )
 
         val serialized = DefaultCardLayouts.serialize(original)
         val deserialized = DefaultCardLayouts.deserialize(serialized)
 
         assertEquals(3, deserialized.size)
-        assertEquals("weather_1", deserialized[0].id)
-        assertEquals(CardType.WEATHER, deserialized[0].type)
-        assertEquals("clock_1", deserialized[1].id)
-        assertEquals(CardType.CLOCK, deserialized[1].type)
-        assertEquals("battery_1", deserialized[2].id)
-        assertEquals(CardType.BATTERY, deserialized[2].type)
+        assertEquals("clock_1", deserialized[0].id)
+        assertEquals(CardType.CLOCK, deserialized[0].type)
+        assertEquals("media_1", deserialized[1].id)
+        assertEquals(CardType.MEDIA, deserialized[1].type)
+        assertEquals("calendar_1", deserialized[2].id)
+        assertEquals(CardType.CALENDAR, deserialized[2].type)
     }
 
     @Test
@@ -49,21 +48,19 @@ class CardModelTest {
         assertEquals(CardType.CLOCK, minimalFallback[0].type)
 
         val dashboardFallback = DefaultCardLayouts.deserialize("", fallbackPreset = "Dashboard")
-        assertEquals(4, dashboardFallback.size)
+        assertEquals(3, dashboardFallback.size)
 
         val mediaFallback = DefaultCardLayouts.deserialize("", fallbackPreset = "Media")
-        assertEquals(3, mediaFallback.size)
+        assertEquals(2, mediaFallback.size)
         assertEquals(CardType.CLOCK, mediaFallback[0].type)
         assertEquals(CardType.MEDIA, mediaFallback[1].type)
-        assertEquals(CardType.BATTERY, mediaFallback[2].type)
     }
 
     @Test
-    fun getMediaLayout_containsClockMediaAndBattery() {
+    fun getMediaLayout_containsClockAndMedia() {
         val layout = DefaultCardLayouts.getMediaLayout()
-        assertEquals(3, layout.size)
+        assertEquals(2, layout.size)
         assertEquals(CardType.CLOCK, layout[0].type)
         assertEquals(CardType.MEDIA, layout[1].type)
-        assertEquals(CardType.BATTERY, layout[2].type)
     }
 }
