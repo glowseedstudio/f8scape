@@ -298,16 +298,7 @@ fun StandbyDashboard(
         }
     }
 
-    val rootBackgroundColor = remember(preferences.showWallpaperBackground, activeBackgroundArtwork, isEcoModeActive) {
-        if (!preferences.showWallpaperBackground || isEcoModeActive) {
-            PureBlack
-        } else if (activeBackgroundArtwork != null) {
-            PureBlack
-        } else {
-            // Translucent dark scrim over the live system wallpaper (FLAG_SHOW_WALLPAPER)
-            PureBlack.copy(alpha = 0.22f)
-        }
-    }
+    val rootBackgroundColor = PureBlack
 
     Box(
         modifier = Modifier
