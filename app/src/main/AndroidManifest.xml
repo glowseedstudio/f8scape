@@ -29,6 +29,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Dedicated Cover Screen Ambient Dashboard Activity -->
+        <activity
+            android:name=".dashboard.DashboardActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+            android:theme="@style/Theme.F8scape" />
+
         <!-- Optional Accessibility Service for cover screen overlay & state observation -->
         <service
             android:name=".service.CoverOverlayService"

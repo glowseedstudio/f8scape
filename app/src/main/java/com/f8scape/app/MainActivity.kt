@@ -18,18 +18,22 @@ import com.f8scape.app.navigation.Screen
 import com.f8scape.app.theme.F8scapeTheme
 import com.f8scape.app.theme.PureBlack
 import com.f8scape.dashboard.StandbyPreviewScreen
+import com.f8scape.data.PreferencesRepository
 import com.f8scape.diagnostics.DiagnosticsScreen
 import com.f8scape.diagnostics.DiagnosticsViewModel
 import com.f8scape.fold.WindowPostureSource
+import com.f8scape.settings.SettingsScreen
 import com.f8scape.util.F8Log
 
 class MainActivity : ComponentActivity() {
 
     private val diagnosticsViewModel: DiagnosticsViewModel by viewModels()
     private lateinit var windowPostureSource: WindowPostureSource
+    private lateinit var preferencesRepository: PreferencesRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        preferencesRepository = PreferencesRepository(this)
 
         // Edge-to-edge ambient display
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -68,7 +72,7 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate(Screen.StandbyPreview.route)
                                 },
                                 onNavigateToSettings = {
-                                    // Settings route
+                                    navController.navigate(Screen.Settings.route)
                                 }
                             )
                         }
@@ -76,6 +80,15 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.StandbyPreview.route) {
                             StandbyPreviewScreen(
                                 onDismiss = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+
+                        composable(Screen.Settings.route) {
+                            SettingsScreen(
+                                preferencesRepository = preferencesRepository,
+                                onNavigateBack = {
                                     navController.popBackStack()
                                 }
                             )

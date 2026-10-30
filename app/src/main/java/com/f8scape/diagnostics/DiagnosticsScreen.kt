@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -60,6 +61,9 @@ fun DiagnosticsScreen(
                 actions = {
                     IconButton(onClick = { viewModel.refreshReport() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = AccentBlue)
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary)
                     }
                 }
             )
