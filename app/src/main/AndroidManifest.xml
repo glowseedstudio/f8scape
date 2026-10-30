@@ -8,6 +8,10 @@
     <!-- Optional overlay permission for testing cover screen window overlay -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Optional permissions for weather updates and local calendar card -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+
     <application
         android:name=".F8scapeApplication"
         android:allowBackup="false"

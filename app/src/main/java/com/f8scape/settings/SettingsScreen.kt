@@ -139,6 +139,69 @@ fun SettingsScreen(
                 }
             }
 
+            // Cards & Integrations Section
+            item {
+                SectionCard(title = "NATIVE CARDS & INTEGRATIONS") {
+                    // Weather City
+                    var cityInput by remember(preferences.weatherCity) { mutableStateOf(preferences.weatherCity) }
+                    Text("Weather City Location", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                    Text("City name used for privacy-preserving weather lookup (Open-Meteo, zero tracking)", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = cityInput,
+                        onValueChange = {
+                            cityInput = it
+                            coroutineScope.launch { preferencesRepository.setWeatherCity(it) }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentBlue,
+                            unfocusedBorderColor = SurfaceBorder,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            cursorColor = AccentBlue
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Calendar Privacy
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Mask Calendar When Locked", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                            Text("Replaces event titles with 'Upcoming Event' on lockscreen for privacy", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.calendarMaskLocked,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setCalendarMaskLocked(it) } },
+                            colors = SwitchDefaults.colors(checkedThumbColor = PureBlack, checkedTrackColor = AccentBlue)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Reset Grid Layout
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                preferencesRepository.setCustomLayout("")
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Reset Card Layout to Default", color = AccentBlue, fontSize = 13.sp)
+                    }
+                }
+            }
+
             // Power & Display Section
             item {
                 SectionCard(title = "POWER & AMBIENT DISPLAY") {

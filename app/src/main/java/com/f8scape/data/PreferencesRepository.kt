@@ -20,7 +20,10 @@ data class UserPreferences(
     val cooldownDurationMs: Long = 2000L,
     val activePreset: String = "Dashboard", // Minimal, Dashboard, Media
     val screenDimLevel: Float = 0.2f, // 0.0 (darkest) to 1.0 (system)
-    val keepScreenOn: Boolean = true
+    val keepScreenOn: Boolean = true,
+    val customLayoutSerialized: String = "",
+    val weatherCity: String = "Melbourne",
+    val calendarMaskLocked: Boolean = false
 )
 
 class PreferencesRepository(
@@ -35,6 +38,9 @@ class PreferencesRepository(
         val ACTIVE_PRESET = stringPreferencesKey("active_preset")
         val SCREEN_DIM_LEVEL = floatPreferencesKey("screen_dim_level")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+        val CUSTOM_LAYOUT = stringPreferencesKey("custom_layout")
+        val WEATHER_CITY = stringPreferencesKey("weather_city")
+        val CALENDAR_MASK_LOCKED = booleanPreferencesKey("calendar_mask_locked")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -54,7 +60,10 @@ class PreferencesRepository(
                 cooldownDurationMs = preferences[PreferencesKeys.COOLDOWN_DURATION_MS] ?: 2000L,
                 activePreset = preferences[PreferencesKeys.ACTIVE_PRESET] ?: "Dashboard",
                 screenDimLevel = preferences[PreferencesKeys.SCREEN_DIM_LEVEL] ?: 0.2f,
-                keepScreenOn = preferences[PreferencesKeys.KEEP_SCREEN_ON] ?: true
+                keepScreenOn = preferences[PreferencesKeys.KEEP_SCREEN_ON] ?: true,
+                customLayoutSerialized = preferences[PreferencesKeys.CUSTOM_LAYOUT] ?: "",
+                weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "Melbourne",
+                calendarMaskLocked = preferences[PreferencesKeys.CALENDAR_MASK_LOCKED] ?: false
             )
         }
 
@@ -95,6 +104,24 @@ class PreferencesRepository(
     suspend fun setScreenDimLevel(dimLevel: Float) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SCREEN_DIM_LEVEL] = dimLevel.coerceIn(0.01f, 1.0f)
+        }
+    }
+
+    suspend fun setCustomLayout(serialized: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CUSTOM_LAYOUT] = serialized
+        }
+    }
+
+    suspend fun setWeatherCity(cityName: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.WEATHER_CITY] = cityName
+        }
+    }
+
+    suspend fun setCalendarMaskLocked(mask: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CALENDAR_MASK_LOCKED] = mask
         }
     }
 }

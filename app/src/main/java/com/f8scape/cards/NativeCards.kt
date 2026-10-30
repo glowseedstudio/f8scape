@@ -1,0 +1,356 @@
+package com.f8scape.cards
+
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.f8scape.app.theme.*
+import com.f8scape.util.TimeUtils
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@Composable
+fun CardContainer(
+    modifier: Modifier = Modifier,
+    isEditMode: Boolean = false,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .border(
+                width = if (isEditMode) 1.5.dp else 1.dp,
+                color = if (isEditMode) AccentBlue.copy(alpha = 0.8f) else SurfaceBorder,
+                shape = RoundedCornerShape(18.dp)
+            ),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            if (isEditMode) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (onMoveUp != null) {
+                            IconButton(onClick = onMoveUp, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up", tint = AccentBlue)
+                            }
+                        }
+                        if (onMoveDown != null) {
+                            IconButton(onClick = onMoveDown, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down", tint = AccentBlue)
+                            }
+                        }
+                    }
+
+                    if (onRemove != null) {
+                        IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Delete, contentDescription = "Remove card", tint = StatusWarning)
+                        }
+                    }
+                }
+            }
+
+            content()
+        }
+    }
+}
+
+@Composable
+fun AmbientClockCard(
+    currentTimeMs: Long,
+    isLarge: Boolean = true,
+    isEditMode: Boolean = false,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null
+) {
+    CardContainer(
+        isEditMode = isEditMode,
+        onMoveUp = onMoveUp,
+        onMoveDown = onMoveDown,
+        onRemove = onRemove
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = true),
+                style = MaterialTheme.typography.displayLarge,
+                fontSize = if (isLarge) 72.sp else 54.sp,
+                fontWeight = FontWeight.ExtraLight,
+                color = TextPrimary
+            )
+            Text(
+                text = TimeUtils.formatDate(currentTimeMs),
+                style = MaterialTheme.typography.titleMedium,
+                color = TextSecondary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun AmbientWeatherCard(
+    cityName: String = "Melbourne",
+    isEditMode: Boolean = false,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    var weatherInfo by remember { mutableStateOf<WeatherInfo?>(null) }
+    val weatherProvider = remember { WeatherDataProvider(context) }
+
+    LaunchedEffect(cityName) {
+        weatherInfo = weatherProvider.getWeather(cityName)
+    }
+
+    CardContainer(
+        isEditMode = isEditMode,
+        onMoveUp = onMoveUp,
+        onMoveDown = onMoveDown,
+        onRemove = onRemove
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val weatherIcon = when (weatherInfo?.condition) {
+                        "Rain", "Showers" -> Icons.Default.WaterDrop
+                        "Thunderstorm" -> Icons.Default.Bolt
+                        "Snow" -> Icons.Default.AcUnit
+                        "Partly Cloudy", "Fog" -> Icons.Default.Cloud
+                        else -> Icons.Default.WbSunny
+                    }
+
+                    Icon(
+                        imageVector = weatherIcon,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${weatherInfo?.tempC ?: 21}°C",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Light,
+                        color = TextPrimary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${weatherInfo?.condition ?: "Clear"} · ${weatherInfo?.cityName ?: cityName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
+
+            if (weatherInfo?.isCached == true) {
+                Text(
+                    text = "Cached",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextTertiary,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AmbientBatteryCard(
+    isEditMode: Boolean = false,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    var batteryPercent by remember { mutableIntStateOf(100) }
+    var isCharging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val batteryStatus = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 100
+            val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
+            val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+
+            batteryPercent = if (level >= 0 && scale > 0) (level * 100) / scale else 100
+            isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+
+            delay(15000L) // Refresh every 15s
+        }
+    }
+
+    CardContainer(
+        isEditMode = isEditMode,
+        onMoveUp = onMoveUp,
+        onMoveDown = onMoveDown,
+        onRemove = onRemove
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
+                        contentDescription = null,
+                        tint = if (isCharging) AccentBlue else if (batteryPercent > 20) StatusSuccess else StatusWarning,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "$batteryPercent%",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Light,
+                        color = TextPrimary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isCharging) "Charging on Fast Wireless" else "Battery Health Normal",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
+
+            LinearProgressIndicator(
+                progress = { (batteryPercent / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .width(60.dp)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = if (isCharging) AccentBlue else if (batteryPercent > 20) StatusSuccess else StatusWarning,
+                trackColor = SurfaceVariantDark
+            )
+        }
+    }
+}
+
+@Composable
+fun AmbientCalendarCard(
+    maskTitle: Boolean = false,
+    isEditMode: Boolean = false,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    val calendarProvider = remember { CalendarDataProvider(context) }
+    var upcomingEvent by remember { mutableStateOf<CalendarEventInfo?>(null) }
+    val hasPermission = remember { calendarProvider.hasCalendarPermission() }
+
+    LaunchedEffect(Unit) {
+        if (hasPermission) {
+            upcomingEvent = calendarProvider.getNextUpcomingEvent(maskTitleForPrivacy = maskTitle)
+        }
+    }
+
+    CardContainer(
+        isEditMode = isEditMode,
+        onMoveUp = onMoveUp,
+        onMoveDown = onMoveDown,
+        onRemove = onRemove
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.CalendarToday,
+                contentDescription = null,
+                tint = AccentBlue,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                if (!hasPermission) {
+                    Text(
+                        text = "Calendar access not enabled",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Grant permission in Settings to show events",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextTertiary
+                    )
+                } else if (upcomingEvent == null) {
+                    Text(
+                        text = "No upcoming events today",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Your schedule is clear",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                } else {
+                    val event = upcomingEvent!!
+                    Text(
+                        text = event.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                    val formattedTime = if (event.isAllDay) "All day" else "${timeFormat.format(Date(event.startTimeMs))} - ${timeFormat.format(Date(event.endTimeMs))}"
+                    Text(
+                        text = formattedTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AccentBlue
+                    )
+                }
+            }
+        }
+    }
+}

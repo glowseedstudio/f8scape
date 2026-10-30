@@ -88,7 +88,11 @@ class DashboardActivity : ComponentActivity() {
 
     private fun startPostureExitObservation() {
         lifecycleScope.launch {
+            val launchTimeMs = System.currentTimeMillis()
             sensorPostureSource.observePosture().collect { postureData ->
+                // Grace window for sensor stabilization on launch
+                if (System.currentTimeMillis() - launchTimeMs < 1500L) return@collect
+
                 // Exit condition: picked up (stability < 0.55) or posture folded flat, closed, portrait, etc.
                 val isNotTent = postureData.posture != FoldPosture.TENT_CANDIDATE
                 val isMoving = postureData.stabilityConfidence < 0.55f
