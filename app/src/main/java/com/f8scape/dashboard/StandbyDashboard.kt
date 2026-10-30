@@ -63,7 +63,11 @@ import com.f8scape.cards.CalendarDataProvider
 import com.f8scape.cards.CalendarEventInfo
 import com.f8scape.cards.CardItem
 import com.f8scape.cards.CardType
+import com.f8scape.cards.ClockColorOption
+import com.f8scape.cards.ClockStyle
 import com.f8scape.cards.DefaultCardLayouts
+import com.f8scape.cards.F8ClockFace
+import com.f8scape.cards.LiveClockEditorPanel
 import com.f8scape.cards.WeatherDataProvider
 import com.f8scape.cards.WeatherInfo
 import com.f8scape.data.PreferencesRepository
@@ -106,6 +110,7 @@ fun StandbyDashboard(
     var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var lastInteractionTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isEditMode by remember { mutableStateOf(false) }
+    var isClockEditorOpen by remember { mutableStateOf(false) }
     var isPagedMode by remember { mutableStateOf(false) }
     var selectedCalendarDay by remember { mutableStateOf<CalendarDaySelection?>(null) }
     var localContentBrightness by remember {
@@ -365,6 +370,7 @@ fun StandbyDashboard(
                         ) {
                             HorizontalPager(
                                 state = pagerState,
+                                userScrollEnabled = !isClockEditorOpen,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(bottom = if (availablePages.size > 1) 22.dp else 0.dp)
@@ -376,6 +382,17 @@ fun StandbyDashboard(
                                             weatherCity = preferences.weatherCity,
                                             showWeather = preferences.showWeather,
                                             showBattery = preferences.showBattery,
+                                            clockStyleId = preferences.clockStyle,
+                                            clockColorId = preferences.clockColorId,
+                                            isClockEditorOpen = isClockEditorOpen,
+                                            onOpenClockEditor = { isClockEditorOpen = true },
+                                            onCloseClockEditor = { isClockEditorOpen = false },
+                                            onSelectClockStyle = { style ->
+                                                coroutineScope.launch { preferencesRepo.setClockStyle(style.id) }
+                                            },
+                                            onSelectClockColor = { color ->
+                                                coroutineScope.launch { preferencesRepo.setClockColorId(color.id) }
+                                            },
                                             onDoubleTap = onDismissRequest,
                                             modifier = Modifier.fillMaxSize()
                                         )
@@ -403,7 +420,7 @@ fun StandbyDashboard(
                             }
 
                             // Subtle Samsung One UI pill page indicator at the bottom
-                            if (availablePages.size > 1) {
+                            if (availablePages.size > 1 && !isClockEditorOpen) {
                                 Row(
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
@@ -441,6 +458,8 @@ fun StandbyDashboard(
                                 weatherCity = preferences.weatherCity,
                                 showWeather = preferences.showWeather,
                                 showBattery = preferences.showBattery,
+                                clockStyleId = preferences.clockStyle,
+                                clockColorId = preferences.clockColorId,
                                 maskCalendar = preferences.calendarMaskLocked,
                                 isEditMode = isEditMode,
                                 onEnterEditMode = { isEditMode = true },
@@ -1098,6 +1117,13 @@ private fun BigClockView(
     weatherCity: String,
     showWeather: Boolean,
     showBattery: Boolean,
+    clockStyleId: String = "ONE_UI_MODERN",
+    clockColorId: String = "PURE_WHITE",
+    isClockEditorOpen: Boolean = false,
+    onOpenClockEditor: () -> Unit = {},
+    onCloseClockEditor: () -> Unit = {},
+    onSelectClockStyle: (ClockStyle) -> Unit = {},
+    onSelectClockColor: (ClockColorOption) -> Unit = {},
     onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -1137,116 +1163,153 @@ private fun BigClockView(
         SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(currentTimeMs))
     }
 
+    val resolvedStyle = remember(clockStyleId) { ClockStyle.fromId(clockStyleId) }
+    val resolvedColorOption = remember(clockColorId) { ClockColorOption.fromId(clockColorId) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                if (onDoubleTap != null) {
-                    detectTapGestures(onDoubleTap = { onDoubleTap() })
-                }
+            .pointerInput(isClockEditorOpen) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        if (!isClockEditorOpen) {
+                            onDoubleTap?.invoke()
+                        }
+                    },
+                    onLongPress = {
+                        onOpenClockEditor()
+                    },
+                    onTap = {
+                        if (isClockEditorOpen) {
+                            onCloseClockEditor()
+                        }
+                    }
+                )
             },
         contentAlignment = Alignment.Center
     ) {
         Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = if (isClockEditorOpen) Arrangement.SpaceBetween else Arrangement.Center
         ) {
-            // Bold large time: Samsung One UI flagship ambient clock
-            Text(
-                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = false),
-                fontSize = 112.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-3.0).sp,
-                color = Color.White
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Day and Date directly under time
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            // Upper/Center Live Clock Preview Area
+            Column(
+                modifier = if (isClockEditorOpen) Modifier.weight(1f) else Modifier,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = dayOfWeek,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    color = AccentBlue
+                F8ClockFace(
+                    currentTimeMs = currentTimeMs,
+                    style = resolvedStyle,
+                    accentColor = resolvedColorOption.color,
+                    isLarge = true,
+                    isFullScreen = !isClockEditorOpen
                 )
-                Text(
-                    text = "·",
-                    fontSize = 18.sp,
-                    color = Color.White.copy(alpha = 0.40f),
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-                Text(
-                    text = fullDate,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = Color.White.copy(alpha = 0.85f)
-                )
-            }
 
-            // Weather and Battery (if enabled)
-            if (showWeather || showBattery) {
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Day and Date directly under time
                 Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    if (showWeather) {
-                        val weatherIcon = when (weatherInfo?.condition) {
-                            "Rain", "Showers" -> Icons.Default.WaterDrop
-                            "Thunderstorm" -> Icons.Default.Bolt
-                            "Snow" -> Icons.Default.AcUnit
-                            "Partly Cloudy", "Fog" -> Icons.Default.Cloud
-                            else -> Icons.Default.WbSunny
+                    Text(
+                        text = dayOfWeek,
+                        fontSize = if (isClockEditorOpen) 15.sp else 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        color = if (resolvedColorOption == ClockColorOption.PURE_WHITE) AccentBlue else resolvedColorOption.color
+                    )
+                    Text(
+                        text = "·",
+                        fontSize = if (isClockEditorOpen) 15.sp else 18.sp,
+                        color = Color.White.copy(alpha = 0.40f),
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    Text(
+                        text = fullDate,
+                        fontSize = if (isClockEditorOpen) 15.sp else 18.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
+                }
+
+                // Weather and Battery (shown when not in compact editor mode)
+                if (!isClockEditorOpen && (showWeather || showBattery)) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (showWeather) {
+                            val weatherIcon = when (weatherInfo?.condition) {
+                                "Rain", "Showers" -> Icons.Default.WaterDrop
+                                "Thunderstorm" -> Icons.Default.Bolt
+                                "Snow" -> Icons.Default.AcUnit
+                                "Partly Cloudy", "Fog" -> Icons.Default.Cloud
+                                else -> Icons.Default.WbSunny
+                            }
+
+                            Icon(
+                                imageVector = weatherIcon,
+                                contentDescription = null,
+                                tint = if (weatherInfo?.condition == "Clear" || weatherInfo?.condition == null) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${weatherInfo?.tempC ?: 21}°C · ${weatherInfo?.cityName ?: weatherCity}",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = Color.White.copy(alpha = 0.75f)
+                            )
                         }
 
-                        Icon(
-                            imageVector = weatherIcon,
-                            contentDescription = null,
-                            tint = if (weatherInfo?.condition == "Clear" || weatherInfo?.condition == null) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.85f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "${weatherInfo?.tempC ?: 21}°C · ${weatherInfo?.cityName ?: weatherCity}",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.75f)
-                        )
-                    }
+                        if (showWeather && showBattery) {
+                            Text(
+                                text = "·",
+                                fontSize = 15.sp,
+                                color = Color.White.copy(alpha = 0.40f),
+                                modifier = Modifier.padding(horizontal = 10.dp)
+                            )
+                        }
 
-                    if (showWeather && showBattery) {
-                        Text(
-                            text = "·",
-                            fontSize = 15.sp,
-                            color = Color.White.copy(alpha = 0.40f),
-                            modifier = Modifier.padding(horizontal = 10.dp)
-                        )
-                    }
-
-                    if (showBattery) {
-                        Icon(
-                            imageVector = if (isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
-                            contentDescription = null,
-                            tint = if (isCharging) Color(0xFF00E676) else Color.White.copy(alpha = 0.85f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "${batteryPercent}%${if (isCharging) " · Charging" else ""}",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.75f)
-                        )
+                        if (showBattery) {
+                            Icon(
+                                imageVector = if (isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
+                                contentDescription = null,
+                                tint = if (isCharging) Color(0xFF00E676) else Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${batteryPercent}%${if (isCharging) " · Charging" else ""}",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = Color.White.copy(alpha = 0.75f)
+                            )
+                        }
                     }
                 }
+            }
+
+            // Live Clock Studio Drawer when Touch & Hold is triggered
+            if (isClockEditorOpen) {
+                LiveClockEditorPanel(
+                    selectedStyle = resolvedStyle,
+                    selectedColor = resolvedColorOption,
+                    onSelectStyle = onSelectClockStyle,
+                    onSelectColor = onSelectClockColor,
+                    onDone = onCloseClockEditor,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
             }
         }
     }
 }
+
 
 

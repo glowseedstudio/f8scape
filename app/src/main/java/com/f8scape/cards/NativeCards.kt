@@ -140,6 +140,8 @@ fun AmbientClockCard(
     weatherCity: String = "Canberra",
     showWeather: Boolean = true,
     showBattery: Boolean = true,
+    clockStyleId: String = "ONE_UI_MODERN",
+    clockColorId: String = "PURE_WHITE",
     isLarge: Boolean = true,
     isEditMode: Boolean = false,
     onClockClick: () -> Unit = {},
@@ -176,6 +178,9 @@ fun AmbientClockCard(
         }
     }
 
+    val resolvedStyle = remember(clockStyleId) { ClockStyle.fromId(clockStyleId) }
+    val resolvedColor = remember(clockColorId) { ClockColorOption.fromId(clockColorId).color }
+
     CardContainer(
         isEditMode = isEditMode,
         onMoveUp = onMoveUp,
@@ -189,13 +194,13 @@ fun AmbientClockCard(
                 .clickable(enabled = !isEditMode) { onClockClick() },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Samsung One UI Clock: Crisp, large, pure white, elegant spacing
-            Text(
-                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = false),
-                fontSize = if (isLarge) 84.sp else 62.sp,
-                fontWeight = FontWeight.Light,
-                letterSpacing = (-2.0).sp,
-                color = Color.White
+            // Unified Flagship Clock Face (synced with Big Clock & Settings)
+            F8ClockFace(
+                currentTimeMs = currentTimeMs,
+                style = resolvedStyle,
+                accentColor = resolvedColor,
+                isLarge = isLarge,
+                isFullScreen = false
             )
 
             // Date directly under time

@@ -9,9 +9,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,6 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -28,11 +33,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.f8scape.app.theme.*
+import com.f8scape.cards.ClockColorOption
+import com.f8scape.cards.ClockStyle
+import com.f8scape.cards.F8ClockFace
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
 import com.f8scape.media.F8MediaNotificationListener
 import com.f8scape.service.CoverOverlayService
 import com.f8scape.util.WallpaperHelper
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -297,6 +306,125 @@ fun SettingsScreen(
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                             ) {
                                 Text("Grant", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Clock Studio & Styles Section (100% synced with Dashboard & Big Clock View)
+            item {
+                val activeClockStyle = remember(preferences.clockStyle) { ClockStyle.fromId(preferences.clockStyle) }
+                val activeClockColor = remember(preferences.clockColorId) { ClockColorOption.fromId(preferences.clockColorId) }
+                var previewTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        previewTimeMs = System.currentTimeMillis()
+                        delay(1000L)
+                    }
+                }
+
+                SectionCard(title = "Clock Studio & Styles") {
+                    Text(
+                        text = "Synced across Ambient Dashboard & Full-Screen Big Clock. Tip: Touch and hold the Big Clock in StandBy to open the live editor.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Live OLED Clock Preview Box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color.Black)
+                            .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
+                            .padding(vertical = 22.dp, horizontal = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        F8ClockFace(
+                            currentTimeMs = previewTimeMs,
+                            style = activeClockStyle,
+                            accentColor = activeClockColor.color,
+                            isLarge = false,
+                            isFullScreen = false
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Clock Face Style", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text(activeClockStyle.subtitle, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(ClockStyle.entries) { style ->
+                            val isSelected = style == activeClockStyle
+                            Surface(
+                                onClick = {
+                                    coroutineScope.launch { preferencesRepository.setClockStyle(style.id) }
+                                },
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f))
+                            ) {
+                                Text(
+                                    text = style.displayName,
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Clock Colour", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                        Text(activeClockColor.displayName, style = MaterialTheme.typography.bodyMedium, color = activeClockColor.color, fontWeight = FontWeight.SemiBold)
+                    }
+                    Text("Includes classic tones, retro red LED, and soft pastel shades", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        items(ClockColorOption.entries) { option ->
+                            val isSelected = option == activeClockColor
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(option.color)
+                                    .border(
+                                        width = if (isSelected) 2.5.dp else 1.dp,
+                                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.25f),
+                                        shape = CircleShape
+                                    )
+                                    .clickable {
+                                        coroutineScope.launch { preferencesRepository.setClockColorId(option.id) }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = option.displayName,
+                                        tint = if (option == ClockColorOption.PURE_WHITE || option.isPastel) Color.Black else Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }

@@ -28,7 +28,9 @@ data class UserPreferences(
     val showWallpaperBackground: Boolean = true,
     val contentBrightness: Float = 1.0f,
     val showWeather: Boolean = true,
-    val showBattery: Boolean = true
+    val showBattery: Boolean = true,
+    val clockStyle: String = "ONE_UI_MODERN",
+    val clockColorId: String = "PURE_WHITE"
 )
 
 class PreferencesRepository(
@@ -51,6 +53,8 @@ class PreferencesRepository(
         val CONTENT_BRIGHTNESS = floatPreferencesKey("content_brightness")
         val SHOW_WEATHER = booleanPreferencesKey("show_weather")
         val SHOW_BATTERY = booleanPreferencesKey("show_battery")
+        val CLOCK_STYLE = stringPreferencesKey("clock_style")
+        val CLOCK_COLOR_ID = stringPreferencesKey("clock_color_id")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -78,7 +82,9 @@ class PreferencesRepository(
                 showWallpaperBackground = preferences[PreferencesKeys.SHOW_WALLPAPER_BACKGROUND] ?: true,
                 contentBrightness = preferences[PreferencesKeys.CONTENT_BRIGHTNESS] ?: 1.0f,
                 showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: true,
-                showBattery = preferences[PreferencesKeys.SHOW_BATTERY] ?: true
+                showBattery = preferences[PreferencesKeys.SHOW_BATTERY] ?: true,
+                clockStyle = preferences[PreferencesKeys.CLOCK_STYLE] ?: "ONE_UI_MODERN",
+                clockColorId = preferences[PreferencesKeys.CLOCK_COLOR_ID] ?: "PURE_WHITE"
             )
         }
 
@@ -167,6 +173,18 @@ class PreferencesRepository(
     suspend fun setShowBattery(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SHOW_BATTERY] = enabled
+        }
+    }
+
+    suspend fun setClockStyle(styleId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CLOCK_STYLE] = styleId
+        }
+    }
+
+    suspend fun setClockColorId(colorId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CLOCK_COLOR_ID] = colorId
         }
     }
 }
