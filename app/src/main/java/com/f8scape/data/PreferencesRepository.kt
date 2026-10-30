@@ -22,7 +22,7 @@ data class UserPreferences(
     val screenDimLevel: Float = 0.2f, // 0.0 (darkest) to 1.0 (system)
     val keepScreenOn: Boolean = true,
     val customLayoutSerialized: String = "",
-    val weatherCity: String = "Melbourne",
+    val weatherCity: String = "Canberra",
     val calendarMaskLocked: Boolean = false
 )
 
@@ -62,7 +62,7 @@ class PreferencesRepository(
                 screenDimLevel = preferences[PreferencesKeys.SCREEN_DIM_LEVEL] ?: 0.2f,
                 keepScreenOn = preferences[PreferencesKeys.KEEP_SCREEN_ON] ?: true,
                 customLayoutSerialized = preferences[PreferencesKeys.CUSTOM_LAYOUT] ?: "",
-                weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "Melbourne",
+                weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "Canberra",
                 calendarMaskLocked = preferences[PreferencesKeys.CALENDAR_MASK_LOCKED] ?: false
             )
         }

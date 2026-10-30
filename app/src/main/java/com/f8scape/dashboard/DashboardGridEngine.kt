@@ -27,7 +27,7 @@ import com.f8scape.cards.*
 fun DashboardGridEngine(
     cards: List<CardItem>,
     currentTimeMs: Long,
-    weatherCity: String = "Melbourne",
+    weatherCity: String = "Canberra",
     maskCalendar: Boolean = false,
     isEditMode: Boolean = false,
     onEnterEditMode: () -> Unit = {},

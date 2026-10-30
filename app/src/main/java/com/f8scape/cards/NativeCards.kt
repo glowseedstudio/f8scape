@@ -137,7 +137,7 @@ fun AmbientClockCard(
 
 @Composable
 fun AmbientWeatherCard(
-    cityName: String = "Melbourne",
+    cityName: String = "Canberra",
     isEditMode: Boolean = false,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
