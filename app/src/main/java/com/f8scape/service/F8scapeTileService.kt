@@ -64,9 +64,9 @@ class F8scapeTileService : TileService() {
     private fun updateTile(enabled: Boolean) {
         val tile = qsTile ?: return
         tile.state = if (enabled) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-        tile.label = "F8scape"
+        tile.label = "Tent Mode"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            tile.subtitle = if (enabled) "StandBy On" else "StandBy Off"
+            tile.subtitle = if (enabled) "Active" else "Inactive"
         }
         tile.updateTile()
     }

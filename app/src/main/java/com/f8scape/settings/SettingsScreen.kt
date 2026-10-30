@@ -270,6 +270,17 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    Text("Content Luminance (White Text & Cards): ${(preferences.contentBrightness * 100).toInt()}%", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                    Slider(
+                        value = preferences.contentBrightness,
+                        onValueChange = { coroutineScope.launch { preferencesRepository.setContentBrightness(it) } },
+                        valueRange = 0.15f..1.0f,
+                        colors = SliderDefaults.colors(thumbColor = AccentBlue, activeTrackColor = AccentBlue)
+                    )
+                    Text("Dims white numerals, labels, and cards without affecting background wallpaper. Also adjustable via vertical drag gesture on the left edge.", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

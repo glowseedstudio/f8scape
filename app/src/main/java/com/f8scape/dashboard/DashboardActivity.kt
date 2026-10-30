@@ -59,19 +59,25 @@ class DashboardActivity : ComponentActivity() {
         insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         insetsController.hide(WindowInsetsCompat.Type.systemBars())
 
-        // Read preferences for brightness & keepScreenOn
+        // Observe preferences for brightness, keepScreenOn & wallpaper flag
         lifecycleScope.launch {
-            val prefs = preferencesRepository.userPreferencesFlow.first()
-            if (prefs.keepScreenOn) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            }
-            if (prefs.showWallpaperBackground) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-                window.setBackgroundDrawableResource(android.R.color.transparent)
-            }
-            // Window-specific brightness
-            window.attributes = window.attributes.apply {
-                screenBrightness = prefs.screenDimLevel.coerceIn(0.01f, 1.0f)
+            preferencesRepository.userPreferencesFlow.collect { prefs ->
+                if (prefs.keepScreenOn) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+                if (prefs.showWallpaperBackground) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+                    window.setBackgroundDrawableResource(android.R.color.transparent)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+                    window.setBackgroundDrawableResource(android.R.color.black)
+                }
+                // Window-specific brightness
+                window.attributes = window.attributes.apply {
+                    screenBrightness = prefs.screenDimLevel.coerceIn(0.01f, 1.0f)
+                }
             }
         }
 

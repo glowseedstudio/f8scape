@@ -43,6 +43,10 @@ fun KenBurnsBackground(
             targetValue = targetVisibility,
             animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
         )
+        if (targetVisibility == 0f) {
+            currentBitmap = null
+            previousBitmap = null
+        }
     }
 
     // Smooth crossfade between songs
@@ -55,9 +59,6 @@ fun KenBurnsBackground(
                 targetValue = 1f,
                 animationSpec = tween(durationMillis = 1200, easing = LinearEasing)
             )
-            previousBitmap = null
-        } else if (artwork == null) {
-            currentBitmap = null
             previousBitmap = null
         }
     }
@@ -100,7 +101,7 @@ fun KenBurnsBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(if (artwork != null && isEnabled) PureBlack.copy(alpha = masterAlpha.value) else Color.Transparent)
+            .background(if (masterAlpha.value > 0.001f) PureBlack.copy(alpha = masterAlpha.value) else Color.Transparent)
     ) {
         val vis = masterAlpha.value
         if (vis > 0.01f) {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -60,6 +61,9 @@ fun StandbyDashboard(
     var lastInteractionTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isEditMode by remember { mutableStateOf(false) }
     var isFullMusicMode by remember { mutableStateOf(false) }
+    var localContentBrightness by remember(preferences.contentBrightness) {
+        mutableFloatStateOf(preferences.contentBrightness)
+    }
 
     // Cards state loaded from DataStore preferences
     val currentCards = remember(preferences.customLayoutSerialized, preferences.activePreset) {
@@ -208,28 +212,26 @@ fun StandbyDashboard(
             )
         }
 
-        // Floating ambient content with 8-point orbital burn-in drift
+        // Floating ambient content with 8-point orbital burn-in drift & content brightness
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(18.dp)
                 .offset { animatedBurnInOffset }
+                .alpha(localContentBrightness)
         ) {
-            // Top-left back button when in Full Music Mode
+            // Top-left back chevron when in Full Music Mode (soft styling matching the top-right X)
             if (showFullMusic) {
                 IconButton(
                     onClick = { isFullMusicMode = false },
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.12f))
+                        .alpha(0.6f)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back to dashboard",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
+                        tint = TextTertiary
                     )
                 }
             }
@@ -310,6 +312,44 @@ fun StandbyDashboard(
                     )
                 }
             }
+        }
+
+        // Invisible gesture zone on the left edge (to the left of the clock) for vertical drag brightness control
+        if (!isEditMode) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .width(180.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = { onDismissRequest() },
+                            onLongPress = {
+                                if (!isFullMusicMode) isEditMode = true
+                            }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = {
+                                coroutineScope.launch {
+                                    preferencesRepo.setContentBrightness(localContentBrightness)
+                                }
+                            },
+                            onDragCancel = {
+                                coroutineScope.launch {
+                                    preferencesRepo.setContentBrightness(localContentBrightness)
+                                }
+                            },
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                lastInteractionTimeMs = System.currentTimeMillis()
+                                val delta = -dragAmount / 450f
+                                localContentBrightness = (localContentBrightness + delta).coerceIn(0.15f, 1.0f)
+                            }
+                        )
+                    }
+            )
         }
     }
 }

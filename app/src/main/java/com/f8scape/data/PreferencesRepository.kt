@@ -25,7 +25,8 @@ data class UserPreferences(
     val weatherCity: String = "Canberra",
     val calendarMaskLocked: Boolean = false,
     val kenBurnsEnabled: Boolean = true,
-    val showWallpaperBackground: Boolean = true
+    val showWallpaperBackground: Boolean = true,
+    val contentBrightness: Float = 1.0f
 )
 
 class PreferencesRepository(
@@ -45,6 +46,7 @@ class PreferencesRepository(
         val CALENDAR_MASK_LOCKED = booleanPreferencesKey("calendar_mask_locked")
         val KEN_BURNS_ENABLED = booleanPreferencesKey("ken_burns_enabled")
         val SHOW_WALLPAPER_BACKGROUND = booleanPreferencesKey("show_wallpaper_background")
+        val CONTENT_BRIGHTNESS = floatPreferencesKey("content_brightness")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -69,7 +71,8 @@ class PreferencesRepository(
                 weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "Canberra",
                 calendarMaskLocked = preferences[PreferencesKeys.CALENDAR_MASK_LOCKED] ?: false,
                 kenBurnsEnabled = preferences[PreferencesKeys.KEN_BURNS_ENABLED] ?: true,
-                showWallpaperBackground = preferences[PreferencesKeys.SHOW_WALLPAPER_BACKGROUND] ?: true
+                showWallpaperBackground = preferences[PreferencesKeys.SHOW_WALLPAPER_BACKGROUND] ?: true,
+                contentBrightness = preferences[PreferencesKeys.CONTENT_BRIGHTNESS] ?: 1.0f
             )
         }
 
@@ -140,6 +143,12 @@ class PreferencesRepository(
     suspend fun setShowWallpaperBackground(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SHOW_WALLPAPER_BACKGROUND] = enabled
+        }
+    }
+
+    suspend fun setContentBrightness(brightness: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CONTENT_BRIGHTNESS] = brightness.coerceIn(0.15f, 1.0f)
         }
     }
 }
