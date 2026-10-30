@@ -3,6 +3,7 @@ package com.f8scape.dashboard
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
+import android.media.AudioManager
 import android.os.BatteryManager
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -22,6 +23,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -296,7 +298,16 @@ fun StandbyDashboard(
         }
     }
 
-    val rootBackgroundColor = PureBlack
+    val rootBackgroundColor = remember(preferences.showWallpaperBackground, activeBackgroundArtwork, isEcoModeActive) {
+        if (!preferences.showWallpaperBackground || isEcoModeActive) {
+            PureBlack
+        } else if (activeBackgroundArtwork != null) {
+            PureBlack
+        } else {
+            // Translucent dark scrim over the live system wallpaper (FLAG_SHOW_WALLPAPER)
+            PureBlack.copy(alpha = 0.22f)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -639,6 +650,139 @@ fun StandbyDashboard(
                         )
                     }
             )
+        }
+
+        // Top-edge horizontal swipe gesture strip on the Full-Screen Music View to control Music Volume
+        val isMusicPageActive = currentScreen == DashboardScreen.PAGED &&
+            availablePages.getOrNull(pagerState.currentPage) == StandbyPage.MUSIC
+        if (isMusicPageActive && !isEditMode) {
+            val audioManager = remember(context) {
+                context.getSystemService(android.content.Context.AUDIO_SERVICE) as? AudioManager
+            }
+            var volumeFraction by remember {
+                val max = (audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15).coerceAtLeast(1)
+                val cur = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: (max / 2)
+                mutableFloatStateOf((cur.toFloat() / max.toFloat()).coerceIn(0f, 1f))
+            }
+            var isDraggingVolume by remember { mutableStateOf(false) }
+            var lastVolumeChangeTimeMs by remember { mutableLongStateOf(0L) }
+
+            // Sync with system volume when not actively dragging
+            LaunchedEffect(currentTimeMs, isDraggingVolume) {
+                if (!isDraggingVolume && audioManager != null) {
+                    val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                    val cur = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    volumeFraction = (cur.toFloat() / max.toFloat()).coerceIn(0f, 1f)
+                }
+            }
+
+            val showActiveVolumePill = isDraggingVolume || (currentTimeMs - lastVolumeChangeTimeMs) < 2200L
+            val volumePillAlpha by animateFloatAsState(
+                targetValue = when {
+                    showActiveVolumePill -> 1.0f
+                    !isIdleDimmed -> 0.42f
+                    else -> 0.0f
+                },
+                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                label = "MusicVolumePillAlpha"
+            )
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 72.dp)
+                    .height(72.dp)
+                    .pointerInput(audioManager) {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                isDraggingVolume = true
+                                val now = System.currentTimeMillis()
+                                lastInteractionTimeMs = now
+                                lastVolumeChangeTimeMs = now
+                                if (audioManager != null) {
+                                    val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                                    val cur = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                    volumeFraction = (cur.toFloat() / max.toFloat()).coerceIn(0f, 1f)
+                                }
+                            },
+                            onDragEnd = {
+                                isDraggingVolume = false
+                                lastVolumeChangeTimeMs = System.currentTimeMillis()
+                            },
+                            onDragCancel = {
+                                isDraggingVolume = false
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                val now = System.currentTimeMillis()
+                                lastInteractionTimeMs = now
+                                lastVolumeChangeTimeMs = now
+                                val delta = dragAmount / 320f
+                                volumeFraction = (volumeFraction + delta).coerceIn(0f, 1f)
+                                if (audioManager != null) {
+                                    val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                                    val targetStep = kotlin.math.round(volumeFraction * max).toInt().coerceIn(0, max)
+                                    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetStep, 0)
+                                }
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.TopCenter
+            ) {
+                if (volumePillAlpha > 0.01f) {
+                    val volumePercent = kotlin.math.round(volumeFraction * 100f).toInt()
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 14.dp)
+                            .alpha(volumePillAlpha)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFF14161A).copy(alpha = if (showActiveVolumePill) 0.92f else 0.65f))
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = if (showActiveVolumePill) 0.18f else 0.08f),
+                                shape = RoundedCornerShape(50)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = when {
+                                volumePercent == 0 -> Icons.Default.VolumeOff
+                                volumePercent < 50 -> Icons.Default.VolumeDown
+                                else -> Icons.Default.VolumeUp
+                            },
+                            contentDescription = "Music Volume",
+                            tint = Color.White.copy(alpha = 0.90f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(130.dp)
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color.White.copy(alpha = 0.18f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(volumeFraction.coerceIn(0f, 1f))
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Color.White)
+                            )
+                        }
+                        Text(
+                            text = "$volumePercent%",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White.copy(alpha = 0.90f),
+                            modifier = Modifier.widthIn(min = 34.dp),
+                            textAlign = TextAlign.End
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -26,13 +26,15 @@ Swipe horizontally across the cover screen to move between four dedicated views 
   - **Analog Chrono** — Oversized watch dial with sweeping hands (`Highlights` or `Full Colour`)
   - **Retro LED** — 7-segment digital matrix with unlit ghost segments and hardware `AM`/`PM` indicators
 - **Full-Screen Calendar:** Full-month and upcoming schedule view with **5 layouts** (*Default*, *Agenda Split*, *Minimal Dot*, *Editorial Bold*, and *Bento Boxed*), 8 accent colours, and `Highlights` vs `Full Colour` modes.
-- **Full-Screen Media Player:** Appears automatically when music or podcasts are playing, complete with album art, an animated progress scrubber, and big tap targets for play/pause and track skipping.
+- **Full-Screen Media Player:** Appears automatically when music or podcasts are playing, complete with album art, an animated progress scrubber, big tap targets for play/pause and track skipping, and a **top-edge left/right swipe gesture** to smoothly adjust music volume.
 
-### 3. Touch-and-Hold Live Studio
-You don't need to unfold the phone to tweak how StandBy looks:
+### 3. Touch-and-Hold Live Studio & Edge Gestures
+You don't need to unfold the phone to tweak how StandBy looks or behaves:
 - **Long-press the Clock** (in Split Dashboard or Full-Screen Clock) to open the **Clock Studio** and live-preview styles, accent colours, and highlight modes.
 - **Long-press the Calendar** to open the **Calendar Studio**.
-- **Tap the top-right gear icon** on the StandBy screen to adjust wallpaper visibility, subtle motion, and independent brightness sliders for the background and widgets.
+- **Swipe up/down along the left screen edge** on any StandBy view to adjust numeral and widget brightness on the fly.
+- **Swipe left/right along the top edge of the Music screen** to adjust media playback volume with a sleek pill indicator.
+- **Tap the top-right gear icon** on the StandBy screen to adjust wallpaper visibility, subtle motion, and brightness sliders.
 
 ### 4. Built for OLED Longevity & Battery Life
 - **Burn-In Protection:** Periodic subtle pixel-shifting keeps static pixels from fatiguing the cover OLED panel during long desk or overnight sessions.
