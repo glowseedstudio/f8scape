@@ -438,6 +438,7 @@ fun StandbyDashboard(
                                         BigClockView(
                                             currentTimeMs = currentTimeMs,
                                             weatherCity = preferences.weatherCity,
+                                            weatherTempUnit = preferences.weatherTempUnit,
                                             showWeather = preferences.showWeather,
                                             showBattery = preferences.showBattery,
                                             clockStyleId = localClockStyle,
@@ -540,6 +541,7 @@ fun StandbyDashboard(
                                 cards = localCards,
                                 currentTimeMs = currentTimeMs,
                                 weatherCity = preferences.weatherCity,
+                                weatherTempUnit = preferences.weatherTempUnit,
                                 showWeather = preferences.showWeather,
                                 showBattery = preferences.showBattery,
                                 clockStyleId = localClockStyle,
@@ -1239,6 +1241,7 @@ private fun ExpandedMonthCalendarView(
 private fun BigClockView(
     currentTimeMs: Long,
     weatherCity: String,
+    weatherTempUnit: String = "SYSTEM",
     showWeather: Boolean,
     showBattery: Boolean,
     clockStyleId: String = "DEFAULT",
@@ -1387,8 +1390,9 @@ private fun BigClockView(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
+                            val formattedTemp = com.f8scape.cards.TemperatureUnit.formatTemp(weatherInfo?.tempC ?: 21, weatherTempUnit)
                             Text(
-                                text = "${weatherInfo?.tempC ?: 21}°C · ${weatherInfo?.cityName ?: weatherCity}",
+                                text = "$formattedTemp · ${weatherInfo?.cityName ?: weatherCity}",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Normal,
                                 color = Color.White.copy(alpha = 0.75f)

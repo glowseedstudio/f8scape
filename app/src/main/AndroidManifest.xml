@@ -2,17 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Screen management for ambient stand-by display -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    
-    <!-- Optional overlay permission for testing cover screen window overlay -->
+    <!-- Optional overlay permission for cover screen window overlay -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Optional permissions for weather updates and local calendar card -->
+    <!-- Optional permissions for weather updates, local calendar card, and boot recovery -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application

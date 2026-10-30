@@ -138,6 +138,7 @@ fun CardContainer(
 fun AmbientClockCard(
     currentTimeMs: Long,
     weatherCity: String = "Canberra",
+    weatherTempUnit: String = "SYSTEM",
     showWeather: Boolean = true,
     showBattery: Boolean = true,
     clockStyleId: String = "DEFAULT",
@@ -237,8 +238,9 @@ fun AmbientClockCard(
                             modifier = Modifier.size(17.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
+                        val formattedTemp = TemperatureUnit.formatTemp(weatherInfo?.tempC ?: 21, weatherTempUnit)
                         Text(
-                            text = "${weatherInfo?.tempC ?: 21}°C · ${weatherInfo?.cityName ?: weatherCity}",
+                            text = "$formattedTemp · ${weatherInfo?.cityName ?: weatherCity}",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Normal,
                             color = Color.White.copy(alpha = 0.75f)
@@ -278,6 +280,7 @@ fun AmbientClockCard(
 @Composable
 fun AmbientWeatherCard(
     cityName: String = "Canberra",
+    weatherTempUnit: String = "SYSTEM",
     isEditMode: Boolean = false,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
@@ -320,7 +323,7 @@ fun AmbientWeatherCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "${weatherInfo?.tempC ?: 21}°C",
+                        text = TemperatureUnit.formatTemp(weatherInfo?.tempC ?: 21, weatherTempUnit),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Light,
                         color = TextPrimary

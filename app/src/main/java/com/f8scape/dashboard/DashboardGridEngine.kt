@@ -34,6 +34,7 @@ fun DashboardGridEngine(
     cards: List<CardItem>,
     currentTimeMs: Long,
     weatherCity: String = "Canberra",
+    weatherTempUnit: String = "SYSTEM",
     showWeather: Boolean = true,
     showBattery: Boolean = true,
     clockStyleId: String = "DEFAULT",
@@ -126,11 +127,11 @@ fun DashboardGridEngine(
                                     containerColor = Color.White,
                                     contentColor = Color.Black
                                 ),
-                                shape = RoundedCornerShape(20.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                                 modifier = Modifier.height(34.dp)
                             ) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Done", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
@@ -163,6 +164,7 @@ fun DashboardGridEngine(
                             AmbientClockCard(
                                 currentTimeMs = currentTimeMs,
                                 weatherCity = weatherCity,
+                                weatherTempUnit = weatherTempUnit,
                                 showWeather = showWeather,
                                 showBattery = showBattery,
                                 clockStyleId = clockStyleId,
@@ -190,6 +192,7 @@ fun DashboardGridEngine(
                                     item = item,
                                     currentTimeMs = currentTimeMs,
                                     weatherCity = weatherCity,
+                                    weatherTempUnit = weatherTempUnit,
                                     showWeather = showWeather,
                                     showBattery = showBattery,
                                     clockStyleId = clockStyleId,
@@ -240,6 +243,7 @@ fun DashboardGridEngine(
                                     item = item,
                                     currentTimeMs = currentTimeMs,
                                     weatherCity = weatherCity,
+                                    weatherTempUnit = weatherTempUnit,
                                     showWeather = showWeather,
                                     showBattery = showBattery,
                                     clockStyleId = clockStyleId,
@@ -273,6 +277,7 @@ fun DashboardGridEngine(
                             item = item,
                             currentTimeMs = currentTimeMs,
                             weatherCity = weatherCity,
+                            weatherTempUnit = weatherTempUnit,
                             showWeather = showWeather,
                             showBattery = showBattery,
                             clockStyleId = clockStyleId,
@@ -442,6 +447,7 @@ private fun RenderCard(
     item: CardItem,
     currentTimeMs: Long,
     weatherCity: String,
+    weatherTempUnit: String = "SYSTEM",
     showWeather: Boolean = true,
     showBattery: Boolean = true,
     clockStyleId: String = "DEFAULT",
@@ -464,6 +470,7 @@ private fun RenderCard(
         CardType.CLOCK -> AmbientClockCard(
             currentTimeMs = currentTimeMs,
             weatherCity = weatherCity,
+            weatherTempUnit = weatherTempUnit,
             showWeather = showWeather,
             showBattery = showBattery,
             clockStyleId = clockStyleId,
@@ -478,6 +485,7 @@ private fun RenderCard(
         )
         CardType.WEATHER -> AmbientWeatherCard(
             cityName = weatherCity,
+            weatherTempUnit = weatherTempUnit,
             isEditMode = isEditMode,
             onMoveUp = onMoveUp,
             onMoveDown = onMoveDown,

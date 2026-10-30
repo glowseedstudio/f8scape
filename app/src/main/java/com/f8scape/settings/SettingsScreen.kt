@@ -68,19 +68,6 @@ fun SettingsScreen(
         hasCalendarPermission = isGranted
     }
 
-    var hasStoragePermission by remember {
-        mutableStateOf(WallpaperHelper.hasStoragePermission(context))
-    }
-
-    val storagePermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasStoragePermission = isGranted
-        if (isGranted) {
-            WallpaperHelper.clearCache()
-        }
-    }
-
     val defaultSwitchColors = SwitchDefaults.colors(
         checkedThumbColor = Color.White,
         checkedTrackColor = SamsungBlue,
@@ -286,34 +273,6 @@ fun SettingsScreen(
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowWallpaperBackground(it) } },
                             colors = defaultSwitchColors
                         )
-                    }
-
-                    if (!hasStoragePermission) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(14.dp))
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Storage access needed to read system wallpaper",
-                                fontSize = 12.sp,
-                                color = TextSecondary,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = { storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE) },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = SamsungBlue),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                            ) {
-                                Text("Grant", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
                     }
                 }
             }
@@ -588,6 +547,7 @@ fun SettingsScreen(
                 SectionCard(title = "Native Cards & Integrations") {
                     // Weather City
                     var cityInput by remember(preferences.weatherCity) { mutableStateOf(preferences.weatherCity) }
+                    var localTempUnit by remember(preferences.weatherTempUnit) { mutableStateOf(preferences.weatherTempUnit) }
                     Text("Weather City Location", style = MaterialTheme.typography.bodyLarge, color = Color.White)
                     Text("City name used for privacy-preserving weather lookup (Open-Meteo, zero tracking)", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     Spacer(modifier = Modifier.height(8.dp))
@@ -608,6 +568,39 @@ fun SettingsScreen(
                         ),
                         shape = RoundedCornerShape(14.dp)
                     )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text("Temperature Unit", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text("Follow your phone's regional settings or choose Celsius / Fahrenheit", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        com.f8scape.cards.TemperatureUnit.entries.forEach { unit ->
+                            val isSelected = localTempUnit == unit.id
+                            Surface(
+                                onClick = {
+                                    localTempUnit = unit.id
+                                    coroutineScope.launch { preferencesRepository.setWeatherTempUnit(unit.id) }
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = unit.displayName,
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 9.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
 
                     HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
 

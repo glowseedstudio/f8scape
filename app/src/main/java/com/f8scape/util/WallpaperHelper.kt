@@ -14,13 +14,6 @@ object WallpaperHelper {
     private var cachedWallpaper: Bitmap? = null
     private var lastFetchTimeMs = 0L
 
-    fun hasStoragePermission(context: Context): Boolean {
-        return androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.READ_EXTERNAL_STORAGE
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
     suspend fun getWallpaperBitmap(context: Context): Bitmap? = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         if (cachedWallpaper != null && (now - lastFetchTimeMs) < 60_000L) {

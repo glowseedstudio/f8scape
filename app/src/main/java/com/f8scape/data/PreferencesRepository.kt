@@ -39,7 +39,8 @@ data class UserPreferences(
     val autoEcoOnBatterySaver: Boolean = true,
     val autoOffMinutes: Int = 0, // 0 = Never, 15, 30, 60
     val suppressOnCalls: Boolean = true,
-    val hasCompletedOnboarding: Boolean = false
+    val hasCompletedOnboarding: Boolean = false,
+    val weatherTempUnit: String = "SYSTEM" // SYSTEM, CELSIUS, FAHRENHEIT
 )
 
 class PreferencesRepository(
@@ -73,6 +74,7 @@ class PreferencesRepository(
         val AUTO_OFF_MINUTES = intPreferencesKey("auto_off_minutes")
         val SUPPRESS_ON_CALLS = booleanPreferencesKey("suppress_on_calls")
         val HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
+        val WEATHER_TEMP_UNIT = stringPreferencesKey("weather_temp_unit")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -111,7 +113,8 @@ class PreferencesRepository(
                 autoEcoOnBatterySaver = preferences[PreferencesKeys.AUTO_ECO_ON_BATTERY_SAVER] ?: true,
                 autoOffMinutes = preferences[PreferencesKeys.AUTO_OFF_MINUTES] ?: 0,
                 suppressOnCalls = preferences[PreferencesKeys.SUPPRESS_ON_CALLS] ?: true,
-                hasCompletedOnboarding = preferences[PreferencesKeys.HAS_COMPLETED_ONBOARDING] ?: false
+                hasCompletedOnboarding = preferences[PreferencesKeys.HAS_COMPLETED_ONBOARDING] ?: false,
+                weatherTempUnit = preferences[PreferencesKeys.WEATHER_TEMP_UNIT] ?: "SYSTEM"
             )
         }
 
@@ -266,6 +269,12 @@ class PreferencesRepository(
     suspend fun setHasCompletedOnboarding(completed: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.HAS_COMPLETED_ONBOARDING] = completed
+        }
+    }
+
+    suspend fun setWeatherTempUnit(unitId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.WEATHER_TEMP_UNIT] = unitId
         }
     }
 }

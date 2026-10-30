@@ -426,6 +426,37 @@ fun AppHomeScreen(
                         )
                     }
 
+                    if (preferences.showWeather) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Temperature Unit", fontSize = 13.sp, color = TextSecondary)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                com.f8scape.cards.TemperatureUnit.entries.forEach { unit ->
+                                    val isSelected = preferences.weatherTempUnit == unit.id
+                                    Surface(
+                                        onClick = {
+                                            coroutineScope.launch { preferencesRepository.setWeatherTempUnit(unit.id) }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (isSelected) AccentBlue else Color(0xFF26262A),
+                                        border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f))
+                                    ) {
+                                        Text(
+                                            text = unit.shortLabel,
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

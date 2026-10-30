@@ -1,15 +1,62 @@
 package com.f8scape.cards
 
 import android.content.Context
+import android.os.Build
+import androidx.core.text.util.LocalePreferences
 import com.f8scape.util.F8Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.Locale
+import kotlin.math.roundToInt
+
+enum class TemperatureUnit(val id: String, val displayName: String, val shortLabel: String) {
+    SYSTEM("SYSTEM", "Phone Default", "System"),
+    CELSIUS("CELSIUS", "Celsius (°C)", "°C"),
+    FAHRENHEIT("FAHRENHEIT", "Fahrenheit (°F)", "°F");
+
+    fun useFahrenheit(): Boolean {
+        return when (this) {
+            CELSIUS -> false
+            FAHRENHEIT -> true
+            SYSTEM -> isSystemFahrenheit()
+        }
+    }
+
+    companion object {
+        fun fromId(id: String): TemperatureUnit = entries.find { it.id == id } ?: SYSTEM
+
+        fun isSystemFahrenheit(): Boolean {
+            return try {
+                val unit = LocalePreferences.getTemperatureUnit()
+                if (unit == LocalePreferences.TemperatureUnit.FAHRENHEIT) {
+                    true
+                } else if (unit == LocalePreferences.TemperatureUnit.CELSIUS) {
+                    false
+                } else {
+                    val country = Locale.getDefault().country.uppercase(Locale.ROOT)
+                    country in setOf("US", "BS", "KY", "LR", "PW", "FM", "MH")
+                }
+            } catch (_: Throwable) {
+                val country = Locale.getDefault().country.uppercase(Locale.ROOT)
+                country in setOf("US", "BS", "KY", "LR", "PW", "FM", "MH")
+            }
+        }
+
+        fun formatTemp(tempC: Int, unitPreferenceId: String = "SYSTEM"): String {
+            val useF = fromId(unitPreferenceId).useFahrenheit()
+            return if (useF) {
+                val tempF = (tempC * 9.0 / 5.0 + 32.0).roundToInt()
+                "${tempF}°F"
+            } else {
+                "${tempC}°C"
+            }
+        }
+    }
+}
 
 data class WeatherInfo(
     val tempC: Int,
@@ -17,7 +64,11 @@ data class WeatherInfo(
     val weatherCode: Int,
     val cityName: String,
     val isCached: Boolean = false
-)
+) {
+    fun formattedTemp(unitPreferenceId: String = "SYSTEM"): String {
+        return TemperatureUnit.formatTemp(tempC, unitPreferenceId)
+    }
+}
 
 class WeatherDataProvider(private val context: Context) {
 
@@ -34,30 +85,8 @@ class WeatherDataProvider(private val context: Context) {
             var targetLon: Double? = null
             var resolvedName = cityName
 
-            // Check if coarse location permission is granted for auto-detect
-            if (androidx.core.content.ContextCompat.checkSelfPermission(
-                    context,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            ) {
-                val locManager = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
-                val loc = locManager?.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
-                    ?: locManager?.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
-                if (loc != null) {
-                    targetLat = loc.latitude
-                    targetLon = loc.longitude
-                    try {
-                        val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
-                        val addresses = geocoder.getFromLocation(loc.latitude, loc.longitude, 1)
-                        if (!addresses.isNullOrEmpty()) {
-                            resolvedName = addresses[0].locality ?: addresses[0].subAdminArea ?: cityName
-                        }
-                    } catch (_: Exception) {}
-                }
-            }
-
-            // Fallback: Geocode city name to lat/lon via Open-Meteo geocoding
-            if (targetLat == null || targetLon == null) {
+            // Geocode city name to lat/lon via Open-Meteo geocoding
+            if (cityName.isNotBlank()) {
                 val encodedCity = URLEncoder.encode(cityName, "UTF-8")
                 val geoUrl = URL("https://geocoding-api.open-meteo.com/v1/search?name=$encodedCity&count=1&language=en&format=json")
                 val geoConnection = (geoUrl.openConnection() as HttpURLConnection).apply {
