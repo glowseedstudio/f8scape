@@ -7,10 +7,12 @@
         </trust-anchors>
     </base-config>
 
-    <!-- Only Open-Meteo HTTPS endpoints are used for optional weather lookups -->
+    <!-- Open-Meteo for weather and GitHub for in-app release updates -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="false">api.open-meteo.com</domain>
         <domain includeSubdomains="false">geocoding-api.open-meteo.com</domain>
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">githubusercontent.com</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

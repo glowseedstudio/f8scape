@@ -19,7 +19,9 @@ Every permission requested by F8scape serves an explicit, user-facing function:
 | `SYSTEM_ALERT_WINDOW` *(Required)* | Allows F8scape to draw the StandBy overlay over the cover screen in tent position. | Local UI presentation only. |
 | `NotificationListenerService` *(Optional)* | Detects active media playback sessions to show song title, artist, album art, and transport controls. | Only standard `MediaController` session metadata is read. Personal notifications are never read, stored, or transmitted. |
 | `READ_CALENDAR` *(Optional)* | Populates event dots and the next upcoming event on the Calendar card. | Read locally via `CalendarContract`; supports lockscreen privacy masking. Never leaves your device. |
-| `INTERNET` *(Weather Only)* | Fetches current weather conditions for your configured city. | Restricted via `network_security_config.xml` exclusively to `https://api.open-meteo.com` and `https://geocoding-api.open-meteo.com` over TLS. |
+| `READ_MEDIA_IMAGES` / `READ_EXTERNAL_STORAGE` *(Optional)* | Loads your actual phone wallpaper bitmap for the ambient Ken Burns background. | Local image loading only. Never transmitted off-device. |
+| `INTERNET` | Fetches weather from Open-Meteo and checks GitHub releases for in-app updates. | Restricted via `network_security_config.xml` exclusively to Open-Meteo and GitHub over TLS. |
+| `REQUEST_INSTALL_PACKAGES` *(Optional)* | Enables 1-tap installation of official F8scape release APKs downloaded from GitHub. | Invokes the standard Android package installer. |
 | `RECEIVE_BOOT_COMPLETED` | Restores the standby posture watcher after a device reboot or app update. | Internal non-exported receiver (`android:exported="false"`). |
 
 ## 3. Diagnostic Logs

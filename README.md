@@ -59,8 +59,15 @@ F8scape asks for the absolute minimum permissions needed to function. When you f
 | :--- | :--- | :--- |
 | **Notification Access** *(Optional)* | Detects active media sessions (Spotify, YouTube Music, Apple Music, Pocket Casts, etc.) so you can see album art and control playback in tent mode. | Reads only `MediaSession` metadata (`MediaController`). Personal notifications and messages are never read or stored. |
 | **Read Calendar** *(Optional)* | Shows dots on days with events and lists your next upcoming appointment on the Calendar card. Includes a **Mask When Locked** option in Settings. | Queried locally on-device via Android's `CalendarContract`. Calendar data never leaves your phone. |
-| **Internet** *(Weather Only)* | Fetches current temperature and weather conditions for your chosen city (supporting Phone Default, `°C`, or `°F`). | Locked via Android's `network_security_config.xml` exclusively to `https://api.open-meteo.com` and `https://geocoding-api.open-meteo.com` (free, open-source weather API with no API keys or tracking). |
+| **Photos & Media** *(Optional)* | Loads your actual custom wallpaper bitmap for the ambient Ken Burns background. | Only used locally to render your wallpaper; never leaves your device. |
+| **Internet** *(Weather & Updates)* | Fetches weather from Open-Meteo and checks GitHub releases for in-app updates. | Locked via `network_security_config.xml` to Open-Meteo and GitHub over TLS. |
+| **Install App Updates** (`REQUEST_INSTALL_PACKAGES`) | Lets you download and install new F8scape releases directly from GitHub without needing to manually sideload every update. | Android native package installer prompt; only installs official signed F8scape APKs. |
 | **Run at Startup** (`RECEIVE_BOOT_COMPLETED`) | Restores the background tent-posture watcher after you restart your phone or install an app update. | Internal receiver (`exported="false"`). |
+
+### 5. In-App Updates (Direct from GitHub)
+- F8scape checks for new releases on GitHub automatically every 24 hours in the background.
+- You can also check manually anytime via the **Check for Updates** button on the **About** screen or in **Settings**.
+- When an update is available, you can view the changelog, download the APK with a live progress indicator, and install it with one tap.
 
 ---
 

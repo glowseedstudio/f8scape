@@ -41,6 +41,7 @@
 -keep class com.f8scape.automation.** { *; }
 -keep class com.f8scape.power.** { *; }
 -keep class com.f8scape.media.MediaSnapshot { *; }
+-keep class com.f8scape.updater.** { *; }
 
 # ------------------------------------------------------------------------------
 # 4. Foldable Window Extensions & Hinge Posture (AndroidX Window / OEM Sidecar)

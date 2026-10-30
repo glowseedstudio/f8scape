@@ -6,10 +6,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SystemUpdateAlt
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +28,7 @@ import com.f8scape.R
 import com.f8scape.app.theme.AccentBlue
 import com.f8scape.app.theme.TextSecondary
 import com.f8scape.app.theme.TextTertiary
+import com.f8scape.updater.AppUpdateDialog
 
 private val AboutBg = Color(0xFF0A0A0C)
 private val AboutCardBg = Color(0xFF161618)
@@ -31,6 +36,8 @@ private val AboutCardBg = Color(0xFF161618)
 @Composable
 fun AboutScreen() {
     val context = LocalContext.current
+    var showUpdateDialog by remember { mutableStateOf(false) }
+
     val versionName = remember {
         try {
             val pkgInfo = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -58,7 +65,7 @@ fun AboutScreen() {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 28.dp, vertical = 36.dp),
+                    .padding(horizontal = 28.dp, vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -78,7 +85,7 @@ fun AboutScreen() {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
                     text = "F8scape",
@@ -102,7 +109,7 @@ fun AboutScreen() {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "A quiet bedside clock and cover screen dashboard made for the Galaxy Z Fold 8. Prop your phone in tent mode and it turns on; pick it up and it gets out of your way.",
@@ -112,7 +119,32 @@ fun AboutScreen() {
                     lineHeight = 21.sp
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Check for Updates Button
+                Button(
+                    onClick = { showUpdateDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222228)),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdateAlt,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Check for Updates",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "No ads, no analytics, and no cloud accounts.",
@@ -122,5 +154,11 @@ fun AboutScreen() {
                 )
             }
         }
+    }
+
+    if (showUpdateDialog) {
+        AppUpdateDialog(
+            onDismiss = { showUpdateDialog = false }
+        )
     }
 }

@@ -45,6 +45,11 @@ import com.f8scape.fold.WindowPostureSource
 import com.f8scape.onboarding.FirstOpenSetupScreen
 import com.f8scape.service.CoverOverlayService
 import com.f8scape.settings.SettingsScreen
+import com.f8scape.updater.AppUpdateChecker
+import com.f8scape.updater.AppUpdateDialog
+import com.f8scape.updater.AppUpdateDownloader
+import com.f8scape.updater.AppUpdatePreferences
+import com.f8scape.updater.UpdateCheckResult
 import com.f8scape.util.F8Log
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -93,6 +98,22 @@ class MainActivity : ComponentActivity() {
                 val coroutineScope = rememberCoroutineScope()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
+
+                val updatePrefs = remember { AppUpdatePreferences(this@MainActivity) }
+                var autoUpdateResult by remember { mutableStateOf<UpdateCheckResult.Available?>(null) }
+
+                LaunchedEffect(Unit) {
+                    AppUpdateDownloader.cleanOldUpdates(this@MainActivity)
+                    if (updatePrefs.shouldAutoCheck()) {
+                        updatePrefs.recordCheckPerformed()
+                        val checker = AppUpdateChecker()
+                        val currentVersion = AppUpdateChecker.getInstalledAppVersion(this@MainActivity)
+                        val result = checker.checkForUpdate(currentVersion)
+                        if (result is UpdateCheckResult.Available) {
+                            autoUpdateResult = result
+                        }
+                    }
+                }
 
                 val showBottomRail = currentRoute in listOf(
                     Screen.Home.route,
@@ -196,6 +217,13 @@ class MainActivity : ComponentActivity() {
                                     .align(Alignment.BottomCenter)
                                     .navigationBarsPadding()
                                     .padding(horizontal = 24.dp, vertical = 14.dp)
+                            )
+                        }
+
+                        autoUpdateResult?.let { available ->
+                            AppUpdateDialog(
+                                initialResult = available,
+                                onDismiss = { autoUpdateResult = null }
                             )
                         }
                     }

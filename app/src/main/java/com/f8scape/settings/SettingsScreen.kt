@@ -41,6 +41,8 @@ import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
 import com.f8scape.media.F8MediaNotificationListener
 import com.f8scape.service.CoverOverlayService
+import com.f8scape.updater.AppUpdateDialog
+import com.f8scape.updater.AppUpdatePreferences
 import com.f8scape.util.WallpaperHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -67,6 +69,8 @@ fun SettingsScreen(
     ) { isGranted ->
         hasCalendarPermission = isGranted
     }
+
+    var showUpdateDialog by remember { mutableStateOf(false) }
 
     val defaultSwitchColors = SwitchDefaults.colors(
         checkedThumbColor = Color.White,
@@ -977,10 +981,65 @@ fun SettingsScreen(
                 }
             }
 
+            // In-App Updates Section
+            item {
+                val updatePrefs = remember { AppUpdatePreferences(context) }
+                var autoCheckEnabled by remember { mutableStateOf(updatePrefs.isAutoCheckEnabled) }
+
+                SectionCard(title = "App Updates") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Automatic 24-Hour Check", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Check GitHub releases in the background every 24 hours", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = autoCheckEnabled,
+                            onCheckedChange = { enabled ->
+                                autoCheckEnabled = enabled
+                                updatePrefs.isAutoCheckEnabled = enabled
+                            },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Check for Updates", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Query GitHub for new F8scape releases and install directly", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { showUpdateDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF26262A)),
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text("Check", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+
             item {
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+
+    if (showUpdateDialog) {
+        AppUpdateDialog(
+            onDismiss = { showUpdateDialog = false }
+        )
     }
 }
 
