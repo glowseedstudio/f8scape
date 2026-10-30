@@ -136,6 +136,7 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                             WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                             WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
                     PixelFormat.OPAQUE
                 ).apply {

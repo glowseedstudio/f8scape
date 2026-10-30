@@ -179,7 +179,42 @@ fun SettingsScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("Open", color = AccentBlue, fontSize = 12.sp)
+                            Text(if (isA11yRunning) "Config" else "Open", color = AccentBlue, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    val isOverlayGranted = Settings.canDrawOverlays(context)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Appear on top (System Overlay)", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                            Text(
+                                text = if (isOverlayGranted) "Granted & active" else "Not granted (Enables full-screen standby overlay)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isOverlayGranted) StatusSuccess else StatusWarning
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:${context.packageName}")
+                                ).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(if (isOverlayGranted) "Config" else "Grant", color = AccentBlue, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(Icons.Default.OpenInNew, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
                         }

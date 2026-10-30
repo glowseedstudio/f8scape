@@ -69,14 +69,14 @@ class SensorPostureSource(
                     lastHingeAngle != null -> {
                         val angle = lastHingeAngle!!
                         when {
-                            angle < 15f -> FoldPosture.CLOSED
-                            angle in 60f..120f && isTentPose -> FoldPosture.TENT_CANDIDATE
-                            angle in 45f..160f -> FoldPosture.HALF_OPENED
+                            angle < 20f -> FoldPosture.CLOSED
+                            angle in 45f..135f && isTentPose -> FoldPosture.TENT_CANDIDATE
+                            angle in 30f..160f -> FoldPosture.HALF_OPENED
                             angle >= 160f -> FoldPosture.FLAT
                             else -> FoldPosture.UNKNOWN
                         }
                     }
-                    isTentPose && stability > 0.7f -> FoldPosture.TENT_CANDIDATE
+                    isTentPose && stability > 0.65f -> FoldPosture.TENT_CANDIDATE
                     else -> FoldPosture.UNKNOWN
                 }
 

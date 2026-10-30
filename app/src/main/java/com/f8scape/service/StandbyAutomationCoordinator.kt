@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 
 class StandbyAutomationCoordinator(
     private val context: Context,
@@ -65,9 +66,12 @@ class StandbyAutomationCoordinator(
             is StandbyStateMachine.Action.ScheduleDwellTimer -> {
                 dwellTimerJob?.cancel()
                 dwellTimerJob = scope.launch {
-                    delay(1050L) // Dwell threshold
-                    // Re-sample / confirm still in candidate tent
-                    F8Log.d("AutomationCoordinator", "Dwell timer finished")
+                    val dwellTime = preferencesRepo.userPreferencesFlow.first().dwellTimeMs
+                    delay(dwellTime)
+                    if (stateMachine.uiState.value.mode == com.f8scape.automation.StandbyMode.CANDIDATE_TENT) {
+                        F8Log.i("AutomationCoordinator", "Dwell timer finished, activating dashboard")
+                        launchDashboard()
+                    }
                 }
             }
 

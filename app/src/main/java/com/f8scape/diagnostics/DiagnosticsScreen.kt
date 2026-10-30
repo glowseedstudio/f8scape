@@ -2,6 +2,7 @@ package com.f8scape.diagnostics
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -313,8 +314,29 @@ fun DiagnosticsScreen(
                             )
                             Spacer(modifier = Modifier.height(10.dp))
 
-                            CapabilityRow("Accessibility Service", rep.isAccessibilityServiceConnected)
-                            CapabilityRow("System Overlay Permission", rep.isOverlayPermissionGranted)
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            CapabilityRow(
+                                label = "Accessibility Service",
+                                isEnabled = rep.isAccessibilityServiceConnected,
+                                onClick = {
+                                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    })
+                                }
+                            )
+                            CapabilityRow(
+                                label = "System Overlay Permission",
+                                isEnabled = rep.isOverlayPermissionGranted,
+                                onClick = {
+                                    val intent = android.content.Intent(
+                                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        android.net.Uri.parse("package:${context.packageName}")
+                                    ).apply {
+                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            )
                             CapabilityRow("Shizuku Installed", rep.shizukuStatus.isInstalled)
                             CapabilityRow("Shizuku Authorized", rep.shizukuStatus.isAuthorized)
                         }
@@ -389,18 +411,19 @@ private fun MetricRow(label: String, value: String, isHighlight: Boolean = false
 }
 
 @Composable
-private fun CapabilityRow(label: String, isEnabled: Boolean) {
+private fun CapabilityRow(label: String, isEnabled: Boolean, onClick: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp),
+            .padding(vertical = 3.dp)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = label, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Text(
-            text = if (isEnabled) "CONNECTED / GRANTED" else "NOT ENABLED",
-            color = if (isEnabled) StatusSuccess else TextTertiary,
+            text = if (isEnabled) "CONNECTED / GRANTED" else "NOT ENABLED (Tap to Grant)",
+            color = if (isEnabled) StatusSuccess else AccentBlue,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium
         )

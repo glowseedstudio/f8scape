@@ -16,6 +16,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.app.Activity
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.f8scape.app.theme.*
 import com.f8scape.util.TimeUtils
 import kotlinx.coroutines.delay
@@ -24,7 +29,25 @@ import kotlinx.coroutines.delay
 fun StandbyPreviewScreen(
     onDismiss: () -> Unit
 ) {
+    val view = LocalView.current
     var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    // Fully hide status and navigation bars while in Standby preview
+    DisposableEffect(Unit) {
+        val window = (view.context as? Activity)?.window
+        if (window != null) {
+            val controller = WindowCompat.getInsetsController(window, window.decorView)
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose {
+            val window = (view.context as? Activity)?.window
+            if (window != null) {
+                val controller = WindowCompat.getInsetsController(window, window.decorView)
+                controller.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
