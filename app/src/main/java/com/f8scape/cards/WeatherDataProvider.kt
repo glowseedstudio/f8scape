@@ -74,79 +74,105 @@ class WeatherDataProvider(private val context: Context) {
 
     private val sharedPrefs = context.getSharedPreferences("f8scape_weather_cache", Context.MODE_PRIVATE)
 
+    companion object {
+        private const val MAX_RESPONSE_CHARS = 16_384
+    }
+
+    private fun readBoundedResponse(connection: javax.net.ssl.HttpsURLConnection): String {
+        return connection.inputStream.bufferedReader().use { reader ->
+            val buffer = CharArray(4096)
+            val builder = StringBuilder()
+            var read: Int
+            while (reader.read(buffer).also { read = it } != -1) {
+                builder.append(buffer, 0, read)
+                if (builder.length >= MAX_RESPONSE_CHARS) break
+            }
+            builder.toString()
+        }
+    }
+
     suspend fun getWeather(cityName: String = "Canberra"): WeatherInfo = withContext(Dispatchers.IO) {
+        val safeCityInput = cityName.trim().take(64).ifBlank { "Canberra" }
         val cachedTemp = sharedPrefs.getInt("cached_temp", 21)
         val cachedCondition = sharedPrefs.getString("cached_condition", "Clear") ?: "Clear"
         val cachedCode = sharedPrefs.getInt("cached_code", 0)
-        val cachedCity = sharedPrefs.getString("cached_city", cityName) ?: cityName
+        val cachedCity = sharedPrefs.getString("cached_city", safeCityInput) ?: safeCityInput
 
         try {
             var targetLat: Double? = null
             var targetLon: Double? = null
-            var resolvedName = cityName
+            var resolvedName = safeCityInput
 
-            // Geocode city name to lat/lon via Open-Meteo geocoding
-            if (cityName.isNotBlank()) {
-                val encodedCity = URLEncoder.encode(cityName, "UTF-8")
+            // Geocode city name to lat/lon via Open-Meteo HTTPS geocoding
+            if (safeCityInput.isNotBlank()) {
+                val encodedCity = URLEncoder.encode(safeCityInput, "UTF-8")
                 val geoUrl = URL("https://geocoding-api.open-meteo.com/v1/search?name=$encodedCity&count=1&language=en&format=json")
-                val geoConnection = (geoUrl.openConnection() as HttpURLConnection).apply {
+                val geoConnection = (geoUrl.openConnection() as javax.net.ssl.HttpsURLConnection).apply {
                     connectTimeout = 4000
                     readTimeout = 4000
                     requestMethod = "GET"
                 }
 
-                if (geoConnection.responseCode == 200) {
-                    val geoResponse = geoConnection.inputStream.bufferedReader().use { it.readText() }
-                    val geoJson = JSONObject(geoResponse)
-                    val results = geoJson.optJSONArray("results")
-                    if (results != null && results.length() > 0) {
-                        val firstResult = results.getJSONObject(0)
-                        targetLat = firstResult.getDouble("latitude")
-                        targetLon = firstResult.getDouble("longitude")
-                        resolvedName = firstResult.optString("name", cityName)
+                try {
+                    if (geoConnection.responseCode == 200) {
+                        val geoResponse = readBoundedResponse(geoConnection)
+                        val geoJson = JSONObject(geoResponse)
+                        val results = geoJson.optJSONArray("results")
+                        if (results != null && results.length() > 0) {
+                            val firstResult = results.getJSONObject(0)
+                            targetLat = firstResult.getDouble("latitude").coerceIn(-90.0, 90.0)
+                            targetLon = firstResult.getDouble("longitude").coerceIn(-180.0, 180.0)
+                            resolvedName = firstResult.optString("name", safeCityInput).take(64)
+                        }
                     }
+                } finally {
+                    geoConnection.disconnect()
                 }
             }
 
             val lat = targetLat ?: -35.2809 // Canberra default coordinates
             val lon = targetLon ?: 149.1300 // Canberra default coordinates
 
-            // 2. Query forecast for current weather
+            // 2. Query forecast for current weather over HTTPS
             val weatherUrl = URL("https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code")
-            val weatherConnection = (weatherUrl.openConnection() as HttpURLConnection).apply {
+            val weatherConnection = (weatherUrl.openConnection() as javax.net.ssl.HttpsURLConnection).apply {
                 connectTimeout = 4000
                 readTimeout = 4000
                 requestMethod = "GET"
             }
 
-            if (weatherConnection.responseCode != 200) {
-                return@withContext WeatherInfo(cachedTemp, cachedCondition, cachedCode, resolvedName, isCached = true)
+            try {
+                if (weatherConnection.responseCode != 200) {
+                    return@withContext WeatherInfo(cachedTemp, cachedCondition, cachedCode, resolvedName, isCached = true)
+                }
+
+                val weatherResponse = readBoundedResponse(weatherConnection)
+                val weatherJson = JSONObject(weatherResponse)
+                val current = weatherJson.getJSONObject("current")
+                val temp = current.getDouble("temperature_2m").toInt().coerceIn(-90, 70)
+                val weatherCode = current.getInt("weather_code")
+
+                val condition = mapWeatherCodeToDescription(weatherCode)
+
+                // Cache locally
+                sharedPrefs.edit()
+                    .putInt("cached_temp", temp)
+                    .putString("cached_condition", condition)
+                    .putInt("cached_code", weatherCode)
+                    .putString("cached_city", resolvedName)
+                    .apply()
+
+                F8Log.i("Weather", "Updated live weather for $resolvedName: $temp°C, $condition")
+                WeatherInfo(
+                    tempC = temp,
+                    condition = condition,
+                    weatherCode = weatherCode,
+                    cityName = resolvedName,
+                    isCached = false
+                )
+            } finally {
+                weatherConnection.disconnect()
             }
-
-            val weatherResponse = weatherConnection.inputStream.bufferedReader().use { it.readText() }
-            val weatherJson = JSONObject(weatherResponse)
-            val current = weatherJson.getJSONObject("current")
-            val temp = current.getDouble("temperature_2m").toInt()
-            val weatherCode = current.getInt("weather_code")
-
-            val condition = mapWeatherCodeToDescription(weatherCode)
-
-            // Cache locally
-            sharedPrefs.edit()
-                .putInt("cached_temp", temp)
-                .putString("cached_condition", condition)
-                .putInt("cached_code", weatherCode)
-                .putString("cached_city", resolvedName)
-                .apply()
-
-            F8Log.i("Weather", "Updated live weather for $resolvedName: $temp°C, $condition")
-            WeatherInfo(
-                tempC = temp,
-                condition = condition,
-                weatherCode = weatherCode,
-                cityName = resolvedName,
-                isCached = false
-            )
         } catch (e: Exception) {
             F8Log.w("Weather", "Network weather fetch failed, using cached values: ${e.message}")
             WeatherInfo(

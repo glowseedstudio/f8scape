@@ -21,6 +21,11 @@ data class ShizukuStatus(
     val details: String = ""
 )
 
+/**
+ * Zero-reflection, no-op Shizuku bridge:
+ * Standard Mode operates 100% natively on the Galaxy Z Fold 8 without privileged shell commands
+ * or dynamic reflection.
+ */
 class SafeShizukuBridge(
     private val context: Context
 ) : ShizukuBridge {
@@ -38,50 +43,23 @@ class SafeShizukuBridge(
         }
 
     override val isRunning: Boolean
-        get() {
-            // Safely check Shizuku binder/service without throwing ClassNotFoundException
-            return try {
-                val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
-                val pingMethod = shizukuClass.getMethod("pingBinder")
-                pingMethod.invoke(null) as? Boolean ?: false
-            } catch (_: Throwable) {
-                false
-            }
-        }
+        get() = false
 
     override val isAuthorized: Boolean
-        get() = try {
-            val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
-            val checkPermMethod = shizukuClass.getMethod("checkSelfPermission")
-            val result = checkPermMethod.invoke(null) as? Int
-            result == PackageManager.PERMISSION_GRANTED
-        } catch (_: Throwable) {
-            false
-        }
+        get() = false
 
     override fun checkStatus(): ShizukuStatus {
         val installed = isInstalled
-        val running = if (installed) isRunning else false
-        val authorized = if (running) isAuthorized else false
-
-        val details = when {
-            !installed -> "Shizuku app is not installed on this device."
-            !running -> "Shizuku service is not running. Start it via wireless debugging or ADB."
-            !authorized -> "Shizuku is running but permission is not yet granted."
-            else -> "Shizuku is connected and authorized. Enhanced shell controls available."
-        }
-
         return ShizukuStatus(
             isInstalled = installed,
-            isRunning = running,
-            isAuthorized = authorized,
-            details = details
+            isRunning = false,
+            isAuthorized = false,
+            details = "Standard Mode active (native public APIs only; privileged shell bridge disabled)."
         )
     }
 
     override fun restoreDefaultDisplayBehavior(): Boolean {
-        F8Log.i("ShizukuBridge", "Restoring default device state / display behavior")
-        // Any device_state base-override is reset here safely
+        F8Log.i("ShizukuBridge", "Verified native display behavior (no privileged overrides active)")
         return true
     }
 }

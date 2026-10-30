@@ -86,7 +86,12 @@ class PowerProfileController(private val context: Context) {
                 addAction(Intent.ACTION_SCREEN_OFF)
                 addAction(Intent.ACTION_SCREEN_ON)
             }
-            context.registerReceiver(systemReceiver, filter)
+            androidx.core.content.ContextCompat.registerReceiver(
+                context,
+                systemReceiver,
+                filter,
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+            )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && thermalListener != null) {
                 powerManager?.addThermalStatusListener(context.mainExecutor, thermalListener)
             }

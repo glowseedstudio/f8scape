@@ -60,8 +60,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         preferencesRepository = PreferencesRepository(this)
 
-        // Edge-to-edge ambient display
+        // Edge-to-edge ambient display + tapjacking protection on configuration UI
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.decorView.filterTouchesWhenObscured = true
 
         // Keep screen on while testing / previewing
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
