@@ -37,7 +37,8 @@ fun DashboardGridEngine(
     onEnterEditMode: () -> Unit = {},
     onUpdateCards: (List<CardItem>) -> Unit = {},
     onDoneEdit: () -> Unit = {},
-    onResetDefaults: () -> Unit = {}
+    onResetDefaults: () -> Unit = {},
+    onExpandMusic: (() -> Unit)? = null
 ) {
     var showAddCardDialog by remember { mutableStateOf(false) }
 
@@ -174,7 +175,8 @@ fun DashboardGridEngine(
                                     } else null,
                                     onRemove = {
                                         onUpdateCards(cards.filter { it.id != item.id })
-                                    }
+                                    },
+                                    onExpandMusic = onExpandMusic
                                 )
                             }
                         }
@@ -196,7 +198,8 @@ fun DashboardGridEngine(
                                     isEditMode = isEditMode,
                                     onRemove = if (cards.size > 1) {
                                         { onUpdateCards(cards.filter { it.id != item.id }) }
-                                    } else null
+                                    } else null,
+                                    onExpandMusic = onExpandMusic
                                 )
                             }
                         }
@@ -233,7 +236,8 @@ fun DashboardGridEngine(
                             } else null,
                             onRemove = if (cards.size > 1) {
                                 { onUpdateCards(cards.filter { it.id != item.id }) }
-                            } else null
+                            } else null,
+                            onExpandMusic = onExpandMusic
                         )
                     }
                 }
@@ -365,7 +369,8 @@ private fun RenderCard(
     isEditMode: Boolean,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
-    onRemove: (() -> Unit)? = null
+    onRemove: (() -> Unit)? = null,
+    onExpandMusic: (() -> Unit)? = null
 ) {
     when (item.type) {
         CardType.CLOCK -> AmbientClockCard(
@@ -401,7 +406,8 @@ private fun RenderCard(
             isEditMode = isEditMode,
             onMoveUp = onMoveUp,
             onMoveDown = onMoveDown,
-            onRemove = onRemove
+            onRemove = onRemove,
+            onExpandMusic = onExpandMusic
         )
         CardType.SPACER -> Spacer(modifier = Modifier.height(16.dp))
     }

@@ -64,34 +64,34 @@ fun KenBurnsBackground(
 
     val infiniteTransition = rememberInfiniteTransition(label = "KenBurnsTransition")
 
-    // Slow 45-second scale oscillation
+    // Dynamic scale oscillation
     val scale by infiniteTransition.animateFloat(
-        initialValue = 1.06f,
-        targetValue = 1.18f,
+        initialValue = 1.08f,
+        targetValue = 1.28f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 45000, easing = LinearEasing),
+            animation = tween(durationMillis = 26000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "KenBurnsScale"
     )
 
-    // Slow 55-second X translation
+    // Dynamic X translation
     val translationX by infiniteTransition.animateFloat(
-        initialValue = -25f,
-        targetValue = 25f,
+        initialValue = -55f,
+        targetValue = 55f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 55000, easing = LinearEasing),
+            animation = tween(durationMillis = 32000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "KenBurnsTranslationX"
     )
 
-    // Slow 38-second Y translation
+    // Dynamic Y translation
     val translationY by infiniteTransition.animateFloat(
-        initialValue = -18f,
-        targetValue = 18f,
+        initialValue = -35f,
+        targetValue = 35f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 38000, easing = LinearEasing),
+            animation = tween(durationMillis = 24000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "KenBurnsTranslationY"
@@ -120,7 +120,7 @@ fun KenBurnsBackground(
                             this.translationX = translationX
                             this.translationY = translationY
                         }
-                        .alpha((1f - progress) * 0.55f * vis)
+                        .alpha((1f - progress) * 0.70f * vis)
                 )
             }
 
@@ -139,7 +139,7 @@ fun KenBurnsBackground(
                             this.translationX = translationX
                             this.translationY = translationY
                         }
-                        .alpha(progress * 0.55f * vis)
+                        .alpha(progress * 0.70f * vis)
                 )
             }
 
