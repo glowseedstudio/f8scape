@@ -143,10 +143,22 @@ fun StandbyDashboard(
         }
     }
 
+    val rootBackgroundColor = remember(preferences.showWallpaperBackground, activeBackgroundArtwork) {
+        if (!preferences.showWallpaperBackground) {
+            PureBlack
+        } else if (activeBackgroundArtwork != null) {
+            PureBlack
+        } else {
+            // Translucent dark scrim over the live system wallpaper (FLAG_SHOW_WALLPAPER)
+            // 45% black preserves rich OLED contrast for white text while showing wallpaper clearly
+            PureBlack.copy(alpha = 0.45f)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(PureBlack)
+            .background(rootBackgroundColor)
             // Initial pointer pass catches ANY user touch to wake up immediately and reset the 10s idle timer
             .pointerInput(Unit) {
                 awaitPointerEventScope {

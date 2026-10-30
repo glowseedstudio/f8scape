@@ -100,7 +100,7 @@ fun KenBurnsBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(PureBlack)
+            .background(if (artwork != null && isEnabled) PureBlack.copy(alpha = masterAlpha.value) else Color.Transparent)
     ) {
         val vis = masterAlpha.value
         if (vis > 0.01f) {

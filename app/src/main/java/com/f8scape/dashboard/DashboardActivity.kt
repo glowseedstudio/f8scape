@@ -65,6 +65,9 @@ class DashboardActivity : ComponentActivity() {
             if (prefs.keepScreenOn) {
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
+            if (prefs.showWallpaperBackground) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+            }
             // Window-specific brightness
             window.attributes = window.attributes.apply {
                 screenBrightness = prefs.screenDimLevel.coerceIn(0.01f, 1.0f)
