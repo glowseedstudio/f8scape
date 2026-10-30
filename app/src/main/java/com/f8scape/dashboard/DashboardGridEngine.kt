@@ -1,9 +1,12 @@
 package com.f8scape.dashboard
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -11,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -234,49 +238,120 @@ fun DashboardGridEngine(
                 }
             }
         }
-    }
 
-    // Add Card Dialog
-    if (showAddCardDialog) {
-        val existingTypes = cards.map { it.type }.toSet()
-        val availableTypes = CardType.values().filter { it != CardType.SPACER && !existingTypes.contains(it) }
+        // Inline Add Card Sheet
+        if (showAddCardDialog) {
+            val existingTypes = cards.map { it.type }.toSet()
+            val allTypes = CardType.values().filter { it != CardType.SPACER }
 
-        AlertDialog(
-            onDismissRequest = { showAddCardDialog = false },
-            title = { Text("Add Card to Grid", color = TextPrimary) },
-            text = {
-                if (availableTypes.isEmpty()) {
-                    Text("All available cards are already added to your dashboard.", color = TextSecondary)
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        availableTypes.forEach { type ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(PureBlack.copy(alpha = 0.85f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { showAddCardDialog = false }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    color = SurfaceDark,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, SurfaceVariantDark),
+                    modifier = Modifier
+                        .fillMaxWidth(if (isLandscape) 0.65f else 0.90f)
+                        .padding(16.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Add Card to Grid",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            IconButton(
+                                onClick = { showAddCardDialog = false },
+                                modifier = Modifier.size(30.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                            }
+                        }
+
+                        Text(
+                            text = "Tap a card to add or restore it on your dashboard:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+
+                        allTypes.forEach { type ->
+                            val isAdded = existingTypes.contains(type)
                             Surface(
                                 onClick = {
                                     val newId = "${type.name.lowercase()}_${System.currentTimeMillis()}"
                                     onUpdateCards(cards + CardItem(id = newId, type = type))
                                     showAddCardDialog = false
                                 },
-                                color = SurfaceVariantDark,
+                                color = if (isAdded) SurfaceDark else SurfaceVariantDark,
                                 shape = RoundedCornerShape(10.dp),
+                                border = if (isAdded) BorderStroke(1.dp, SurfaceVariantDark) else null,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(
-                                    text = type.displayName,
-                                    color = TextPrimary,
-                                    modifier = Modifier.padding(14.dp)
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = type.displayName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = type.defaultTitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+
+                                    if (isAdded) {
+                                        Text(
+                                            text = "On Screen (+)",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = AccentBlue
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Add",
+                                            tint = AccentBlue,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showAddCardDialog = false }) {
-                    Text("Cancel", color = AccentBlue)
-                }
-            },
-            containerColor = SurfaceDark
-        )
+            }
+        }
     }
 }
 
