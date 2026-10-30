@@ -331,6 +331,44 @@ fun SettingsScreen(
 
                     HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
 
+                    // Show Weather Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Show Weather", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Display temperature and forecast icon under the ambient clock", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.showWeather,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowWeather(it) } },
+                            colors = oneUiSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    // Show Battery Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Show Battery", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Display battery percentage and charging status under the ambient clock", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.showBattery,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setShowBattery(it) } },
+                            colors = oneUiSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
                     // Calendar Permission
                     Row(
                         modifier = Modifier.fillMaxWidth(),

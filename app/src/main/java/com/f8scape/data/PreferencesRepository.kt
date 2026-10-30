@@ -26,7 +26,9 @@ data class UserPreferences(
     val calendarMaskLocked: Boolean = false,
     val kenBurnsEnabled: Boolean = true,
     val showWallpaperBackground: Boolean = true,
-    val contentBrightness: Float = 1.0f
+    val contentBrightness: Float = 1.0f,
+    val showWeather: Boolean = true,
+    val showBattery: Boolean = true
 )
 
 class PreferencesRepository(
@@ -47,6 +49,8 @@ class PreferencesRepository(
         val KEN_BURNS_ENABLED = booleanPreferencesKey("ken_burns_enabled")
         val SHOW_WALLPAPER_BACKGROUND = booleanPreferencesKey("show_wallpaper_background")
         val CONTENT_BRIGHTNESS = floatPreferencesKey("content_brightness")
+        val SHOW_WEATHER = booleanPreferencesKey("show_weather")
+        val SHOW_BATTERY = booleanPreferencesKey("show_battery")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -72,7 +76,9 @@ class PreferencesRepository(
                 calendarMaskLocked = preferences[PreferencesKeys.CALENDAR_MASK_LOCKED] ?: false,
                 kenBurnsEnabled = preferences[PreferencesKeys.KEN_BURNS_ENABLED] ?: true,
                 showWallpaperBackground = preferences[PreferencesKeys.SHOW_WALLPAPER_BACKGROUND] ?: true,
-                contentBrightness = preferences[PreferencesKeys.CONTENT_BRIGHTNESS] ?: 1.0f
+                contentBrightness = preferences[PreferencesKeys.CONTENT_BRIGHTNESS] ?: 1.0f,
+                showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: true,
+                showBattery = preferences[PreferencesKeys.SHOW_BATTERY] ?: true
             )
         }
 
@@ -149,6 +155,18 @@ class PreferencesRepository(
     suspend fun setContentBrightness(brightness: Float) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CONTENT_BRIGHTNESS] = brightness.coerceIn(0.15f, 1.0f)
+        }
+    }
+
+    suspend fun setShowWeather(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_WEATHER] = enabled
+        }
+    }
+
+    suspend fun setShowBattery(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_BATTERY] = enabled
         }
     }
 }

@@ -1,6 +1,9 @@
 package com.f8scape.dashboard
 
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
+import android.os.BatteryManager
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -23,6 +26,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,7 +62,10 @@ import com.f8scape.app.theme.*
 import com.f8scape.cards.CalendarDataProvider
 import com.f8scape.cards.CalendarEventInfo
 import com.f8scape.cards.CardItem
+import com.f8scape.cards.CardType
 import com.f8scape.cards.DefaultCardLayouts
+import com.f8scape.cards.WeatherDataProvider
+import com.f8scape.cards.WeatherInfo
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
 import com.f8scape.media.MediaPlaybackRepository
@@ -73,10 +81,15 @@ import java.util.Locale
 
 data class CalendarDaySelection(val year: Int, val month: Int, val day: Int)
 
+enum class StandbyPage {
+    CLOCK,
+    CALENDAR,
+    MUSIC
+}
+
 private enum class DashboardScreen {
     GRID,
-    FULL_MUSIC,
-    FULL_MONTH_CALENDAR,
+    PAGED,
     DAY_CALENDAR
 }
 
@@ -92,8 +105,7 @@ fun StandbyDashboard(
     var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var lastInteractionTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isEditMode by remember { mutableStateOf(false) }
-    var isFullMusicMode by remember { mutableStateOf(false) }
-    var isFullMonthCalendarMode by remember { mutableStateOf(false) }
+    var isPagedMode by remember { mutableStateOf(false) }
     var selectedCalendarDay by remember { mutableStateOf<CalendarDaySelection?>(null) }
     var localContentBrightness by remember {
         mutableFloatStateOf(preferences.contentBrightness)
@@ -179,12 +191,34 @@ fun StandbyDashboard(
     )
 
     val trackInfo by MediaPlaybackRepository.mediaTrackState.collectAsState()
-    val showFullMusic = isFullMusicMode && trackInfo.hasActiveSession
+
+    val availablePages = remember(localCards, trackInfo.hasActiveSession) {
+        buildList {
+            add(StandbyPage.CLOCK)
+            if (localCards.any { it.type == CardType.CALENDAR }) {
+                add(StandbyPage.CALENDAR)
+            }
+            if (localCards.any { it.type == CardType.MEDIA } || trackInfo.hasActiveSession) {
+                add(StandbyPage.MUSIC)
+            }
+        }
+    }
+
+    val pagerState = rememberPagerState(pageCount = { availablePages.size })
+
+    fun openPage(page: StandbyPage) {
+        val index = availablePages.indexOf(page)
+        if (index >= 0) {
+            coroutineScope.launch {
+                pagerState.scrollToPage(index)
+            }
+        }
+        isPagedMode = true
+    }
 
     val currentScreen = when {
         selectedCalendarDay != null -> DashboardScreen.DAY_CALENDAR
-        isFullMonthCalendarMode -> DashboardScreen.FULL_MONTH_CALENDAR
-        showFullMusic -> DashboardScreen.FULL_MUSIC
+        isPagedMode -> DashboardScreen.PAGED
         else -> DashboardScreen.GRID
     }
 
@@ -262,7 +296,7 @@ fun StandbyDashboard(
                 .offset { animatedBurnInOffset }
                 .graphicsLayer { alpha = localContentBrightness }
         ) {
-            // Top-left back chevron when in Full Music Mode, Full Month Calendar, or Day Calendar
+            // Top-left back chevron when in Paged Mode or Calendar Overlay Mode
             if (currentScreen != DashboardScreen.GRID && !isEditMode) {
                 IconButton(
                     onClick = {
@@ -270,11 +304,8 @@ fun StandbyDashboard(
                             DashboardScreen.DAY_CALENDAR -> {
                                 selectedCalendarDay = null
                             }
-                            DashboardScreen.FULL_MONTH_CALENDAR -> {
-                                isFullMonthCalendarMode = false
-                            }
-                            DashboardScreen.FULL_MUSIC -> {
-                                isFullMusicMode = false
+                            DashboardScreen.PAGED -> {
+                                isPagedMode = false
                             }
                             DashboardScreen.GRID -> {}
                         }
@@ -325,26 +356,76 @@ fun StandbyDashboard(
                             )
                         }
                     }
-                    DashboardScreen.FULL_MONTH_CALENDAR -> {
-                        ExpandedMonthCalendarView(
-                            onDayClick = { year, month, day ->
-                                selectedCalendarDay = CalendarDaySelection(year, month, day)
-                            },
-                            maskTitle = preferences.calendarMaskLocked,
-                            onDoubleTap = onDismissRequest,
+                    DashboardScreen.PAGED -> {
+                        Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(top = 28.dp, bottom = 20.dp)
-                        )
-                    }
-                    DashboardScreen.FULL_MUSIC -> {
-                        ExpandedMusicView(
-                            trackInfo = trackInfo,
-                            onDoubleTap = onDismissRequest,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 28.dp, bottom = 20.dp)
-                        )
+                                .padding(top = 28.dp, bottom = 12.dp)
+                        ) {
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = if (availablePages.size > 1) 22.dp else 0.dp)
+                            ) { pageIndex ->
+                                when (availablePages.getOrNull(pageIndex)) {
+                                    StandbyPage.CLOCK -> {
+                                        BigClockView(
+                                            currentTimeMs = currentTimeMs,
+                                            weatherCity = preferences.weatherCity,
+                                            showWeather = preferences.showWeather,
+                                            showBattery = preferences.showBattery,
+                                            onDoubleTap = onDismissRequest,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                    StandbyPage.CALENDAR -> {
+                                        ExpandedMonthCalendarView(
+                                            onDayClick = { year, month, day ->
+                                                selectedCalendarDay = CalendarDaySelection(year, month, day)
+                                            },
+                                            isDimmed = isIdleDimmed,
+                                            maskTitle = preferences.calendarMaskLocked,
+                                            onDoubleTap = onDismissRequest,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                    StandbyPage.MUSIC -> {
+                                        ExpandedMusicView(
+                                            trackInfo = trackInfo,
+                                            onDoubleTap = onDismissRequest,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                    null -> {}
+                                }
+                            }
+
+                            // Subtle Samsung One UI pill page indicator at the bottom
+                            if (availablePages.size > 1) {
+                                Row(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    repeat(availablePages.size) { index ->
+                                        val isCurrent = pagerState.currentPage == index
+                                        Box(
+                                            modifier = Modifier
+                                                .height(4.dp)
+                                                .width(if (isCurrent) 16.dp else 4.dp)
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(
+                                                    if (isCurrent) Color.White.copy(alpha = 0.85f)
+                                                    else Color.White.copy(alpha = 0.25f)
+                                                )
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     DashboardScreen.GRID -> {
                         Box(
@@ -357,6 +438,8 @@ fun StandbyDashboard(
                                 cards = localCards,
                                 currentTimeMs = currentTimeMs,
                                 weatherCity = preferences.weatherCity,
+                                showWeather = preferences.showWeather,
+                                showBattery = preferences.showBattery,
                                 maskCalendar = preferences.calendarMaskLocked,
                                 isEditMode = isEditMode,
                                 onEnterEditMode = { isEditMode = true },
@@ -379,8 +462,9 @@ fun StandbyDashboard(
                                     }
                                 },
                                 onDoubleTap = onDismissRequest,
-                                onExpandMusic = { isFullMusicMode = true },
-                                onExpandMonthCalendar = { isFullMonthCalendarMode = true },
+                                onExpandClock = { openPage(StandbyPage.CLOCK) },
+                                onExpandMusic = { openPage(StandbyPage.MUSIC) },
+                                onExpandMonthCalendar = { openPage(StandbyPage.CALENDAR) },
                                 onSelectCalendarDay = { year, month, day ->
                                     selectedCalendarDay = CalendarDaySelection(year, month, day)
                                 }
@@ -895,6 +979,7 @@ private fun AmbientSineWaveLine(
 @Composable
 private fun ExpandedMonthCalendarView(
     onDayClick: (year: Int, month: Int, day: Int) -> Unit,
+    isDimmed: Boolean = false,
     maskTitle: Boolean = false,
     onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -931,6 +1016,13 @@ private fun ExpandedMonthCalendarView(
     val leadingEmptyDays = (firstDayOfWeek - Calendar.MONDAY + 7) % 7
     val weekDays = listOf("M", "T", "W", "T", "F", "S", "S")
 
+    // Fade help text off with the 10-second idle dimming
+    val helpTextAlpha by animateFloatAsState(
+        targetValue = if (isDimmed) 0.0f else 0.55f,
+        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        label = "CalendarHelpTextAlpha"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -961,7 +1053,8 @@ private fun ExpandedMonthCalendarView(
             Text(
                 text = "Tap a day to view schedule",
                 fontSize = 12.sp,
-                color = TextTertiary
+                color = TextTertiary,
+                modifier = Modifier.alpha(helpTextAlpha)
             )
         }
 
@@ -1066,4 +1159,167 @@ private fun ExpandedMonthCalendarView(
         }
     }
 }
+
+/**
+ * Expanded full-page big clock ambient view:
+ * Shows a centered, bold, flagship Samsung One UI ambient clock with day and date underneath,
+ * plus optional ambient weather and battery indicators.
+ */
+@Composable
+private fun BigClockView(
+    currentTimeMs: Long,
+    weatherCity: String,
+    showWeather: Boolean,
+    showBattery: Boolean,
+    onDoubleTap: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var weatherInfo by remember { mutableStateOf<WeatherInfo?>(null) }
+    val weatherProvider = remember { WeatherDataProvider(context) }
+
+    var batteryPercent by remember { mutableIntStateOf(100) }
+    var isCharging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(weatherCity, showWeather) {
+        if (showWeather) {
+            weatherInfo = weatherProvider.getWeather(weatherCity)
+        }
+    }
+
+    LaunchedEffect(showBattery) {
+        if (showBattery) {
+            while (true) {
+                val batteryStatus = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 100
+                val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
+                val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+
+                batteryPercent = if (level >= 0 && scale > 0) (level * 100) / scale else 100
+                isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+
+                delay(15000L)
+            }
+        }
+    }
+
+    val dayOfWeek = remember(currentTimeMs) {
+        SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(currentTimeMs)).uppercase()
+    }
+    val fullDate = remember(currentTimeMs) {
+        SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(currentTimeMs))
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                if (onDoubleTap != null) {
+                    detectTapGestures(onDoubleTap = { onDoubleTap() })
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Bold large time: Samsung One UI flagship ambient clock
+            Text(
+                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = false),
+                fontSize = 112.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-3.0).sp,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Day and Date directly under time
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = dayOfWeek,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = AccentBlue
+                )
+                Text(
+                    text = "·",
+                    fontSize = 18.sp,
+                    color = Color.White.copy(alpha = 0.40f),
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                Text(
+                    text = fullDate,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+            }
+
+            // Weather and Battery (if enabled)
+            if (showWeather || showBattery) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (showWeather) {
+                        val weatherIcon = when (weatherInfo?.condition) {
+                            "Rain", "Showers" -> Icons.Default.WaterDrop
+                            "Thunderstorm" -> Icons.Default.Bolt
+                            "Snow" -> Icons.Default.AcUnit
+                            "Partly Cloudy", "Fog" -> Icons.Default.Cloud
+                            else -> Icons.Default.WbSunny
+                        }
+
+                        Icon(
+                            imageVector = weatherIcon,
+                            contentDescription = null,
+                            tint = if (weatherInfo?.condition == "Clear" || weatherInfo?.condition == null) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${weatherInfo?.tempC ?: 21}°C · ${weatherInfo?.cityName ?: weatherCity}",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.75f)
+                        )
+                    }
+
+                    if (showWeather && showBattery) {
+                        Text(
+                            text = "·",
+                            fontSize = 15.sp,
+                            color = Color.White.copy(alpha = 0.40f),
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        )
+                    }
+
+                    if (showBattery) {
+                        Icon(
+                            imageVector = if (isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
+                            contentDescription = null,
+                            tint = if (isCharging) Color(0xFF00E676) else Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${batteryPercent}%${if (isCharging) " · Charging" else ""}",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.75f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 

@@ -138,8 +138,11 @@ fun CardContainer(
 fun AmbientClockCard(
     currentTimeMs: Long,
     weatherCity: String = "Canberra",
+    showWeather: Boolean = true,
+    showBattery: Boolean = true,
     isLarge: Boolean = true,
     isEditMode: Boolean = false,
+    onClockClick: () -> Unit = {},
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null
@@ -151,21 +154,25 @@ fun AmbientClockCard(
     var batteryPercent by remember { mutableIntStateOf(100) }
     var isCharging by remember { mutableStateOf(false) }
 
-    LaunchedEffect(weatherCity) {
-        weatherInfo = weatherProvider.getWeather(weatherCity)
+    LaunchedEffect(weatherCity, showWeather) {
+        if (showWeather) {
+            weatherInfo = weatherProvider.getWeather(weatherCity)
+        }
     }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            val batteryStatus = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 100
-            val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
-            val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+    LaunchedEffect(showBattery) {
+        if (showBattery) {
+            while (true) {
+                val batteryStatus = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 100
+                val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
+                val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
 
-            batteryPercent = if (level >= 0 && scale > 0) (level * 100) / scale else 100
-            isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                batteryPercent = if (level >= 0 && scale > 0) (level * 100) / scale else 100
+                isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
 
-            delay(15000L)
+                delay(15000L)
+            }
         }
     }
 
@@ -176,7 +183,10 @@ fun AmbientClockCard(
         onRemove = onRemove
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(enabled = !isEditMode) { onClockClick() },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Samsung One UI Clock: Crisp, large, pure white, elegant spacing
@@ -197,57 +207,62 @@ fun AmbientClockCard(
                 modifier = Modifier.padding(top = 2.dp)
             )
 
-            // Premium Ambient Weather & Battery Row directly under the clock
-            Row(
-                modifier = Modifier.padding(top = 10.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Weather
-                val weatherIcon = when (weatherInfo?.condition) {
-                    "Rain", "Showers" -> Icons.Default.WaterDrop
-                    "Thunderstorm" -> Icons.Default.Bolt
-                    "Snow" -> Icons.Default.AcUnit
-                    "Partly Cloudy", "Fog" -> Icons.Default.Cloud
-                    else -> Icons.Default.WbSunny
+            // Premium Ambient Weather & Battery Row directly under the clock (if enabled in Settings)
+            if (showWeather || showBattery) {
+                Row(
+                    modifier = Modifier.padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (showWeather) {
+                        val weatherIcon = when (weatherInfo?.condition) {
+                            "Rain", "Showers" -> Icons.Default.WaterDrop
+                            "Thunderstorm" -> Icons.Default.Bolt
+                            "Snow" -> Icons.Default.AcUnit
+                            "Partly Cloudy", "Fog" -> Icons.Default.Cloud
+                            else -> Icons.Default.WbSunny
+                        }
+
+                        Icon(
+                            imageVector = weatherIcon,
+                            contentDescription = null,
+                            tint = if (weatherInfo?.condition == "Clear" || weatherInfo?.condition == null) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${weatherInfo?.tempC ?: 21}°C · ${weatherInfo?.cityName ?: weatherCity}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.75f)
+                        )
+                    }
+
+                    if (showWeather && showBattery) {
+                        Text(
+                            text = "·",
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.40f),
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        )
+                    }
+
+                    if (showBattery) {
+                        Icon(
+                            imageVector = if (isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
+                            contentDescription = null,
+                            tint = if (isCharging) Color(0xFF00E676) else Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${batteryPercent}%${if (isCharging) " · Charging" else ""}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.75f)
+                        )
+                    }
                 }
-
-                Icon(
-                    imageVector = weatherIcon,
-                    contentDescription = null,
-                    tint = if (weatherInfo?.condition == "Clear" || weatherInfo?.condition == null) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(17.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "${weatherInfo?.tempC ?: 21}°C · ${weatherInfo?.cityName ?: weatherCity}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = Color.White.copy(alpha = 0.75f)
-                )
-
-                // Refined dot separator
-                Text(
-                    text = "·",
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.40f),
-                    modifier = Modifier.padding(horizontal = 10.dp)
-                )
-
-                // Battery
-                Icon(
-                    imageVector = if (isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
-                    contentDescription = null,
-                    tint = if (isCharging) Color(0xFF00E676) else Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(17.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "${batteryPercent}%${if (isCharging) " · Charging" else ""}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = Color.White.copy(alpha = 0.75f)
-                )
             }
         }
     }

@@ -34,6 +34,8 @@ fun DashboardGridEngine(
     cards: List<CardItem>,
     currentTimeMs: Long,
     weatherCity: String = "Canberra",
+    showWeather: Boolean = true,
+    showBattery: Boolean = true,
     maskCalendar: Boolean = false,
     isEditMode: Boolean = false,
     onEnterEditMode: () -> Unit = {},
@@ -41,6 +43,7 @@ fun DashboardGridEngine(
     onDoneEdit: () -> Unit = {},
     onResetDefaults: () -> Unit = {},
     onDoubleTap: (() -> Unit)? = null,
+    onExpandClock: (() -> Unit)? = null,
     onExpandMusic: (() -> Unit)? = null,
     onExpandMonthCalendar: (() -> Unit)? = null,
     onSelectCalendarDay: ((year: Int, month: Int, day: Int) -> Unit)? = null
@@ -154,8 +157,11 @@ fun DashboardGridEngine(
                             AmbientClockCard(
                                 currentTimeMs = currentTimeMs,
                                 weatherCity = weatherCity,
+                                showWeather = showWeather,
+                                showBattery = showBattery,
                                 isLarge = true,
                                 isEditMode = isEditMode,
+                                onClockClick = { onExpandClock?.invoke() },
                                 onRemove = if (cards.size > 1) {
                                     { onUpdateCards(cards.filter { it.id != clockCard.id }) }
                                 } else null
@@ -175,6 +181,8 @@ fun DashboardGridEngine(
                                     item = item,
                                     currentTimeMs = currentTimeMs,
                                     weatherCity = weatherCity,
+                                    showWeather = showWeather,
+                                    showBattery = showBattery,
                                     maskCalendar = maskCalendar,
                                     isEditMode = isEditMode,
                                     onMoveUp = if (index > 0) {
@@ -196,6 +204,7 @@ fun DashboardGridEngine(
                                     onRemove = {
                                         onUpdateCards(cards.filter { it.id != item.id })
                                     },
+                                    onExpandClock = onExpandClock,
                                     onExpandMusic = onExpandMusic,
                                     onExpandMonthCalendar = onExpandMonthCalendar,
                                     onSelectCalendarDay = onSelectCalendarDay
@@ -216,11 +225,14 @@ fun DashboardGridEngine(
                                     item = item,
                                     currentTimeMs = currentTimeMs,
                                     weatherCity = weatherCity,
+                                    showWeather = showWeather,
+                                    showBattery = showBattery,
                                     maskCalendar = maskCalendar,
                                     isEditMode = isEditMode,
                                     onRemove = if (cards.size > 1) {
                                         { onUpdateCards(cards.filter { it.id != item.id }) }
                                     } else null,
+                                    onExpandClock = onExpandClock,
                                     onExpandMusic = onExpandMusic,
                                     onExpandMonthCalendar = onExpandMonthCalendar,
                                     onSelectCalendarDay = onSelectCalendarDay
@@ -240,6 +252,8 @@ fun DashboardGridEngine(
                             item = item,
                             currentTimeMs = currentTimeMs,
                             weatherCity = weatherCity,
+                            showWeather = showWeather,
+                            showBattery = showBattery,
                             maskCalendar = maskCalendar,
                             isEditMode = isEditMode,
                             onMoveUp = if (index > 0) {
@@ -261,6 +275,7 @@ fun DashboardGridEngine(
                             onRemove = if (cards.size > 1) {
                                 { onUpdateCards(cards.filter { it.id != item.id }) }
                             } else null,
+                            onExpandClock = onExpandClock,
                             onExpandMusic = onExpandMusic,
                             onExpandMonthCalendar = onExpandMonthCalendar,
                             onSelectCalendarDay = onSelectCalendarDay
@@ -400,11 +415,14 @@ private fun RenderCard(
     item: CardItem,
     currentTimeMs: Long,
     weatherCity: String,
+    showWeather: Boolean = true,
+    showBattery: Boolean = true,
     maskCalendar: Boolean,
     isEditMode: Boolean,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
+    onExpandClock: (() -> Unit)? = null,
     onExpandMusic: (() -> Unit)? = null,
     onExpandMonthCalendar: (() -> Unit)? = null,
     onSelectCalendarDay: ((year: Int, month: Int, day: Int) -> Unit)? = null
@@ -413,8 +431,11 @@ private fun RenderCard(
         CardType.CLOCK -> AmbientClockCard(
             currentTimeMs = currentTimeMs,
             weatherCity = weatherCity,
+            showWeather = showWeather,
+            showBattery = showBattery,
             isLarge = false,
             isEditMode = isEditMode,
+            onClockClick = { onExpandClock?.invoke() },
             onMoveUp = onMoveUp,
             onMoveDown = onMoveDown,
             onRemove = onRemove
