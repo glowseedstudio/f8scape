@@ -77,7 +77,7 @@ fun KenBurnsBackground(
             .fillMaxSize()
             .background(PureBlack)
     ) {
-        // Animated artwork layer with heavy dimming (22% opacity)
+        // Animated artwork layer with enhanced ambient visibility (55% opacity)
         Image(
             bitmap = artwork.asImageBitmap(),
             contentDescription = null,
@@ -90,10 +90,10 @@ fun KenBurnsBackground(
                     this.translationX = translationX
                     this.translationY = translationY
                 }
-                .alpha(0.22f)
+                .alpha(0.55f)
         )
 
-        // Deep vignette and dark scrim to ensure edges and text areas stay pure black
+        // Soft ambient vignette to smoothly fade extreme outer edges while keeping artwork clearly visible
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -101,8 +101,9 @@ fun KenBurnsBackground(
                     Brush.radialGradient(
                         colors = listOf(
                             Color.Transparent,
-                            PureBlack.copy(alpha = 0.55f),
-                            PureBlack
+                            Color.Transparent,
+                            PureBlack.copy(alpha = 0.40f),
+                            PureBlack.copy(alpha = 0.80f)
                         )
                     )
                 )
