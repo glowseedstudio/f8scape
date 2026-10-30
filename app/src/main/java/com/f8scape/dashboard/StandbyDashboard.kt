@@ -143,10 +143,47 @@ fun StandbyDashboard(
     var localCalendarColorId by remember(preferences.calendarColorId) { mutableStateOf(preferences.calendarColorId) }
     var localCalendarFullColor by remember(preferences.calendarFullColor) { mutableStateOf(preferences.calendarFullColor) }
 
-    // Periodic second/minute tick
-    LaunchedEffect(Unit) {
+    val powerController = remember { com.f8scape.power.PowerProfileController(context) }
+    val resilienceState by powerController.state.collectAsState()
+
+    DisposableEffect(Unit) {
+        powerController.startMonitoring()
+        onDispose {
+            powerController.stopMonitoring()
+        }
+    }
+
+    val isEcoModeActive = remember(resilienceState, preferences.powerProfile, preferences.autoEcoOnBatterySaver) {
+        resilienceState.shouldEnforceEco(
+            userProfile = com.f8scape.power.PowerProfile.fromId(preferences.powerProfile),
+            autoEcoOnBatterySaver = preferences.autoEcoOnBatterySaver
+        )
+    }
+
+    // Periodic second/minute tick + Auto-Off timeout + Active Call guardrail
+    LaunchedEffect(preferences.autoOffMinutes, preferences.suppressOnCalls) {
         while (true) {
-            currentTimeMs = System.currentTimeMillis()
+            val now = System.currentTimeMillis()
+            currentTimeMs = now
+
+            // Check active call guardrail every 2 seconds
+            if ((now / 1000L) % 2L == 0L && preferences.suppressOnCalls) {
+                val sysState = powerController.refreshState()
+                if (sysState.isCallOrRingtoneActive) {
+                    onDismissRequest()
+                    break
+                }
+            }
+
+            // Check auto-off idle timeout if configured (15, 30, or 60 minutes)
+            if (preferences.autoOffMinutes > 0) {
+                val timeoutMs = preferences.autoOffMinutes * 60_000L
+                if (now - lastInteractionTimeMs >= timeoutMs) {
+                    onDismissRequest()
+                    break
+                }
+            }
+
             delay(1000L)
         }
     }
@@ -290,10 +327,10 @@ fun StandbyDashboard(
                 )
             }
     ) {
-        // Ken Burns Ambient Artwork / Wallpaper Background
+        // Ken Burns Ambient Artwork / Wallpaper Background (Static when Eco profile or Battery Saver active)
         KenBurnsBackground(
             artwork = activeBackgroundArtwork,
-            isEnabled = preferences.kenBurnsEnabled && activeBackgroundArtwork != null
+            isEnabled = preferences.kenBurnsEnabled && !isEcoModeActive && activeBackgroundArtwork != null
         )
 
         // Master window dimming scrim (active during music playback or when wallpaper is disabled)

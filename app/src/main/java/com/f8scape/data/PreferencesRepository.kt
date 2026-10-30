@@ -34,7 +34,11 @@ data class UserPreferences(
     val clockFullColor: Boolean = false,
     val calendarStyle: String = "DEFAULT",
     val calendarColorId: String = "SIGNATURE_BLUE",
-    val calendarFullColor: Boolean = false
+    val calendarFullColor: Boolean = false,
+    val powerProfile: String = "AMBIENT", // AMBIENT or ECO
+    val autoEcoOnBatterySaver: Boolean = true,
+    val autoOffMinutes: Int = 0, // 0 = Never, 15, 30, 60
+    val suppressOnCalls: Boolean = true
 )
 
 class PreferencesRepository(
@@ -63,6 +67,10 @@ class PreferencesRepository(
         val CALENDAR_STYLE = stringPreferencesKey("calendar_style")
         val CALENDAR_COLOR_ID = stringPreferencesKey("calendar_color_id")
         val CALENDAR_FULL_COLOR = booleanPreferencesKey("calendar_full_color")
+        val POWER_PROFILE = stringPreferencesKey("power_profile")
+        val AUTO_ECO_ON_BATTERY_SAVER = booleanPreferencesKey("auto_eco_on_battery_saver")
+        val AUTO_OFF_MINUTES = intPreferencesKey("auto_off_minutes")
+        val SUPPRESS_ON_CALLS = booleanPreferencesKey("suppress_on_calls")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -96,7 +104,11 @@ class PreferencesRepository(
                 clockFullColor = preferences[PreferencesKeys.CLOCK_FULL_COLOR] ?: false,
                 calendarStyle = preferences[PreferencesKeys.CALENDAR_STYLE] ?: "DEFAULT",
                 calendarColorId = preferences[PreferencesKeys.CALENDAR_COLOR_ID] ?: "SIGNATURE_BLUE",
-                calendarFullColor = preferences[PreferencesKeys.CALENDAR_FULL_COLOR] ?: false
+                calendarFullColor = preferences[PreferencesKeys.CALENDAR_FULL_COLOR] ?: false,
+                powerProfile = preferences[PreferencesKeys.POWER_PROFILE] ?: "AMBIENT",
+                autoEcoOnBatterySaver = preferences[PreferencesKeys.AUTO_ECO_ON_BATTERY_SAVER] ?: true,
+                autoOffMinutes = preferences[PreferencesKeys.AUTO_OFF_MINUTES] ?: 0,
+                suppressOnCalls = preferences[PreferencesKeys.SUPPRESS_ON_CALLS] ?: true
             )
         }
 
@@ -221,6 +233,30 @@ class PreferencesRepository(
     suspend fun setCalendarFullColor(fullColor: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CALENDAR_FULL_COLOR] = fullColor
+        }
+    }
+
+    suspend fun setPowerProfile(profileId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.POWER_PROFILE] = profileId
+        }
+    }
+
+    suspend fun setAutoEcoOnBatterySaver(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_ECO_ON_BATTERY_SAVER] = enabled
+        }
+    }
+
+    suspend fun setAutoOffMinutes(minutes: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_OFF_MINUTES] = minutes
+        }
+    }
+
+    suspend fun setSuppressOnCalls(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SUPPRESS_ON_CALLS] = enabled
         }
     }
 }

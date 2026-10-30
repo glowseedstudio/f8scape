@@ -22,6 +22,7 @@ class StandbyAutomationCoordinator(
     private val sensorSource = SensorPostureSource(context)
     private val screenRepo = ScreenStateRepository(context)
     private val preferencesRepo = PreferencesRepository(context)
+    val powerProfileController = com.f8scape.power.PowerProfileController(context)
     val stateMachine = StandbyStateMachine()
 
     private val _livePosture = kotlinx.coroutines.flow.MutableStateFlow<com.f8scape.fold.PostureData?>(null)
@@ -33,6 +34,7 @@ class StandbyAutomationCoordinator(
     fun start() {
         if (observationJob != null) return
         F8Log.i("AutomationCoordinator", "Starting automation coordinator")
+        powerProfileController.startMonitoring()
 
         observationJob = scope.launch {
             // Collect user policy updates
@@ -58,6 +60,7 @@ class StandbyAutomationCoordinator(
         observationJob = null
         dwellTimerJob?.cancel()
         dwellTimerJob = null
+        powerProfileController.stopMonitoring()
         F8Log.i("AutomationCoordinator", "Stopped automation coordinator")
     }
 
@@ -66,9 +69,22 @@ class StandbyAutomationCoordinator(
             is StandbyStateMachine.Action.ScheduleDwellTimer -> {
                 dwellTimerJob?.cancel()
                 dwellTimerJob = scope.launch {
-                    val dwellTime = preferencesRepo.userPreferencesFlow.first().dwellTimeMs
-                    delay(dwellTime)
+                    val prefs = preferencesRepo.userPreferencesFlow.first()
+                    delay(prefs.dwellTimeMs)
                     if (stateMachine.uiState.value.mode == com.f8scape.automation.StandbyMode.CANDIDATE_TENT) {
+                        val sysState = powerProfileController.refreshState()
+                        if (prefs.suppressOnCalls && sysState.isCallOrRingtoneActive) {
+                            F8Log.w("AutomationCoordinator", "Suppressing StandBy launch due to active call/ringtone")
+                            return@launch
+                        }
+                        if (prefs.onlyWhileCharging && !sysState.isCharging) {
+                            F8Log.i("AutomationCoordinator", "Skipping StandBy launch (Only While Charging enabled)")
+                            return@launch
+                        }
+                        if (!sysState.isCharging && sysState.batteryPercent < prefs.minBatteryPercent) {
+                            F8Log.i("AutomationCoordinator", "Skipping StandBy launch (Battery below ${prefs.minBatteryPercent}%)")
+                            return@launch
+                        }
                         F8Log.i("AutomationCoordinator", "Dwell timer finished, activating dashboard")
                         launchDashboard()
                     }

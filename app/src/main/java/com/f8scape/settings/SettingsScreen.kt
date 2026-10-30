@@ -717,6 +717,120 @@ fun SettingsScreen(
                 }
             }
 
+            // Power, Battery & Resilience Section (Milestone 4)
+            item {
+                var localPowerProfile by remember(preferences.powerProfile) { mutableStateOf(preferences.powerProfile) }
+                var localAutoOffMinutes by remember(preferences.autoOffMinutes) { mutableIntStateOf(preferences.autoOffMinutes) }
+                val activeProfile = remember(localPowerProfile) { com.f8scape.power.PowerProfile.fromId(localPowerProfile) }
+
+                SectionCard(title = "Power, Battery & Resilience") {
+                    Text("Power Profile", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text(activeProfile.description, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        com.f8scape.power.PowerProfile.entries.forEach { profile ->
+                            val isSelected = profile == activeProfile
+                            Surface(
+                                onClick = {
+                                    localPowerProfile = profile.id
+                                    coroutineScope.launch { preferencesRepository.setPowerProfile(profile.id) }
+                                },
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = profile.displayName,
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    // Auto-Eco on Battery Saver
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Auto-Eco on Battery Saver", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Pause GPU background motion when Android Battery Saver or thermal throttling is active", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.autoEcoOnBatterySaver,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setAutoEcoOnBatterySaver(it) } },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    // Auto-Off Idle Timeout
+                    Text("Auto-Off Screen Timeout", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text("Automatically exit StandBy after inactivity so the cover screen can turn off", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(0 to "Never", 15 to "15 min", 30 to "30 min", 60 to "60 min").forEach { (mins, label) ->
+                            val isSelected = localAutoOffMinutes == mins
+                            Surface(
+                                onClick = {
+                                    localAutoOffMinutes = mins
+                                    coroutineScope.launch { preferencesRepository.setAutoOffMinutes(mins) }
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 9.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    // Suppress on Incoming / Active Calls
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Suppress on Phone Calls", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Automatically dismiss StandBy if a phone call or ringtone is active", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.suppressOnCalls,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setSuppressOnCalls(it) } },
+                            colors = defaultSwitchColors
+                        )
+                    }
+                }
+            }
+
             // System Integration & Services Section
             item {
                 SectionCard(title = "System Integration & Services") {
