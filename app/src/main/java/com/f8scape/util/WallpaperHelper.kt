@@ -14,6 +14,13 @@ object WallpaperHelper {
     private var cachedWallpaper: Bitmap? = null
     private var lastFetchTimeMs = 0L
 
+    fun hasStoragePermission(context: Context): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.READ_EXTERNAL_STORAGE
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     suspend fun getWallpaperBitmap(context: Context): Bitmap? = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         if (cachedWallpaper != null && (now - lastFetchTimeMs) < 60_000L) {
@@ -22,11 +29,17 @@ object WallpaperHelper {
 
         try {
             val wallpaperManager = WallpaperManager.getInstance(context)
-            val drawable = wallpaperManager.drawable ?: wallpaperManager.fastDrawable
+            val drawable = try {
+                wallpaperManager.drawable ?: wallpaperManager.fastDrawable ?: wallpaperManager.getBuiltInDrawable()
+            } catch (e: SecurityException) {
+                F8Log.w("WallpaperHelper", "SecurityException reading wallpaper: ${e.message}")
+                wallpaperManager.getBuiltInDrawable()
+            }
             val bitmap = drawable?.toBitmap()
             if (bitmap != null) {
                 cachedWallpaper = bitmap
                 lastFetchTimeMs = now
+                F8Log.i("WallpaperHelper", "Loaded wallpaper: ${bitmap.width}x${bitmap.height}")
             }
             bitmap
         } catch (e: Exception) {

@@ -2,21 +2,22 @@ package com.f8scape.app.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Pure dark OLED palette
+// Samsung One UI 9 Dark OLED Palette
 val PureBlack = Color(0xFF000000)
-val DarkBackground = Color(0xFF0A0A0C)
-val SurfaceDark = Color(0xFF141418)
-val SurfaceVariantDark = Color(0xFF1E1E24)
-val SurfaceBorder = Color(0xFF282830)
+val DarkBackground = Color(0xFF000000)
+val SurfaceDark = Color(0xFF161618)
+val SurfaceVariantDark = Color(0xFF242428)
+val SurfaceBorder = Color(0xFF2C2C30)
 
-// Restrained, calm ambient accents (One UI 9 feel, not garish)
-val AccentBlue = Color(0xFF8AB4F8)
-val AccentSubdued = Color(0xFF4A6572)
-val TextPrimary = Color(0xFFF1F1F4)
-val TextSecondary = Color(0xFFA0A0A8)
-val TextTertiary = Color(0xFF6C6C75)
+// Samsung One UI Signature Blue & Typography
+val AccentBlue = Color(0xFF2E75D3)
+val SamsungBlue = Color(0xFF2E75D3)
+val AccentSubdued = Color(0xFF3E4E63)
+val TextPrimary = Color(0xFFFFFFFF)
+val TextSecondary = Color(0xFF9E9EA4)
+val TextTertiary = Color(0xFF6E6E74)
 
-// Status indicators
-val StatusSuccess = Color(0xFF81C784)
-val StatusWarning = Color(0xFFFFB74D)
-val StatusError = Color(0xFFE57373)
+// Status indicators (refined One UI tones)
+val StatusSuccess = Color(0xFF4CAF50)
+val StatusWarning = Color(0xFFFFA726)
+val StatusError = Color(0xFFEF5350)

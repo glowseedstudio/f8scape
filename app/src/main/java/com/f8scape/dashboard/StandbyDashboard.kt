@@ -98,6 +98,10 @@ fun StandbyDashboard(
     LaunchedEffect(preferences.showWallpaperBackground) {
         if (preferences.showWallpaperBackground) {
             wallpaperBitmap = WallpaperHelper.getWallpaperBitmap(context)
+            if (wallpaperBitmap == null) {
+                delay(800L)
+                wallpaperBitmap = WallpaperHelper.getWallpaperBitmap(context)
+            }
         } else {
             wallpaperBitmap = null
         }
@@ -331,8 +335,8 @@ fun StandbyDashboard(
             }
         }
 
-        // Invisible gesture zone on the left edge (to the left of the clock) for vertical drag brightness control
-        if (!isEditMode && !showFullMusic && selectedCalendarDay == null) {
+        // Invisible gesture zone on the left edge for vertical drag brightness control on all screens
+        if (!isEditMode) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
@@ -342,7 +346,7 @@ fun StandbyDashboard(
                         detectTapGestures(
                             onDoubleTap = { onDismissRequest() },
                             onLongPress = {
-                                if (!isFullMusicMode) isEditMode = true
+                                if (!isFullMusicMode && selectedCalendarDay == null) isEditMode = true
                             }
                         )
                     }
