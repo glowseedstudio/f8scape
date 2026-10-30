@@ -622,19 +622,16 @@ private fun ExpandedMusicView(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Progress Bar (if duration available)
+            // Squiggly Progress Bar (Google Media Player-style animated wavy seekbar)
             if (trackInfo.durationMs > 0) {
                 Spacer(modifier = Modifier.height(18.dp))
-                LinearProgressIndicator(
-                    progress = { (trackInfo.positionMs.toFloat() / trackInfo.durationMs).coerceIn(0f, 1f) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.20f)
+                val currentProgress = (trackInfo.positionMs.toFloat() / trackInfo.durationMs).coerceIn(0f, 1f)
+                SquigglyProgressBar(
+                    progress = currentProgress,
+                    isPlaying = trackInfo.isPlaying,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -652,17 +649,7 @@ private fun ExpandedMusicView(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Lightweight, GPU-accelerated animated sine wave line (halts when paused)
-            AmbientSineWaveLine(
-                isPlaying = trackInfo.isPlaying,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 2.dp)
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Large Controls
             Row(
@@ -893,81 +880,93 @@ private fun ExpandedCalendarView(
 }
 
 /**
- * Lightweight, hardware-accelerated dual-sine wave visualizer.
- * Efficiently windowed with a Hann taper at the left and right edges.
- * Halts all animation frames when audio is not playing to save CPU and battery.
+ * Google Media Player-style squiggly/wavy progress bar.
+ * The played portion renders as an animated sine wave when audio is active,
+ * leading into a crisp circular scrubber playhead, with the remaining track
+ * extending as a subtle straight line.
+ * Animation frames are completely halted when paused to save battery and CPU.
  */
 @Composable
-private fun AmbientSineWaveLine(
+private fun SquigglyProgressBar(
+    progress: Float,
     isPlaying: Boolean,
     modifier: Modifier = Modifier
 ) {
     val phase by if (isPlaying) {
-        val infiniteTransition = rememberInfiniteTransition(label = "SineWaveLoop")
+        val infiniteTransition = rememberInfiniteTransition(label = "SquigglyWaveLoop")
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = (2 * Math.PI).toFloat(),
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 3200, easing = LinearEasing),
+                animation = tween(durationMillis = 2200, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart
             ),
-            label = "SinePhase"
+            label = "SquigglyPhase"
         )
     } else {
         remember { mutableFloatStateOf(0f) }
     }
 
-    val primaryPath = remember { Path() }
-    val secondaryPath = remember { Path() }
+    val wavePath = remember { Path() }
 
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(28.dp)
+            .height(20.dp)
     ) {
         val width = size.width
         val height = size.height
         val midY = height / 2f
-        val maxAmp = if (isPlaying) 6.dp.toPx() else 0f
+        val clampedProgress = progress.coerceIn(0f, 1f)
+        val progressX = width * clampedProgress
 
-        primaryPath.reset()
-        secondaryPath.reset()
+        val strokeWidthPx = 3.5.dp.toPx()
+        val waveAmplitude = if (isPlaying) 3.5.dp.toPx() else 0f
+        val wavelengthPx = 38.dp.toPx()
 
-        val steps = 64
-        val dx = width / steps
-
-        for (i in 0..steps) {
-            val x = i * dx
-            val normX = (x / width).coerceIn(0f, 1f)
-            // Hann window taper to make edges smoothly taper to 0
-            val taper = Math.sin(Math.PI * normX).toFloat()
-            val amp = maxAmp * taper
-
-            val y1 = midY + amp * Math.sin(2.0 * Math.PI * (x / 140.dp.toPx()) - phase).toFloat()
-            val y2 = midY + (amp * 0.65f) * Math.sin(2.6 * Math.PI * (x / 140.dp.toPx()) - (phase * 1.25) + 0.8).toFloat()
-
-            if (i == 0) {
-                primaryPath.moveTo(x, y1)
-                secondaryPath.moveTo(x, y2)
-            } else {
-                primaryPath.lineTo(x, y1)
-                secondaryPath.lineTo(x, y2)
-            }
-        }
-
-        if (isPlaying) {
-            drawPath(
-                path = secondaryPath,
-                color = AccentBlue.copy(alpha = 0.45f),
-                style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round)
+        // 1. Draw unplayed portion (straight horizontal line from progressX to end)
+        if (progressX < width) {
+            drawLine(
+                color = Color.White.copy(alpha = 0.22f),
+                start = androidx.compose.ui.geometry.Offset(progressX, midY),
+                end = androidx.compose.ui.geometry.Offset(width, midY),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
             )
         }
 
-        drawPath(
-            path = primaryPath,
-            color = if (isPlaying) Color.White.copy(alpha = 0.70f) else Color.White.copy(alpha = 0.18f),
-            style = Stroke(width = if (isPlaying) 2.dp.toPx() else 1.dp.toPx(), cap = StrokeCap.Round)
-        )
+        // 2. Draw played portion (smooth sine wave up to progressX)
+        if (progressX > 0f) {
+            wavePath.reset()
+            val dx = 2.5.dp.toPx()
+            var x = 0f
+            wavePath.moveTo(0f, midY)
+
+            while (x < progressX) {
+                // Smoothly taper amplitude at the beginning and right before the playhead thumb
+                val taperStart = (x / 14.dp.toPx()).coerceIn(0f, 1f)
+                val taperEnd = ((progressX - x) / 14.dp.toPx()).coerceIn(0f, 1f)
+                val currentAmp = waveAmplitude * taperStart * taperEnd
+
+                val y = midY + currentAmp * Math.sin(2.0 * Math.PI * (x / wavelengthPx) - phase).toFloat()
+                wavePath.lineTo(x, y)
+                x += dx
+            }
+            wavePath.lineTo(progressX, midY)
+
+            drawPath(
+                path = wavePath,
+                color = Color.White,
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+
+            // Circular playhead scrubber thumb at progress position
+            drawCircle(
+                color = Color.White,
+                radius = 5.dp.toPx(),
+                center = androidx.compose.ui.geometry.Offset(progressX, midY)
+            )
+        }
     }
 }
 
