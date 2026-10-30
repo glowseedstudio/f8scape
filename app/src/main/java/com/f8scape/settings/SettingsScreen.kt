@@ -317,6 +317,7 @@ fun SettingsScreen(
             item {
                 var localStyleId by remember(preferences.clockStyle) { mutableStateOf(preferences.clockStyle) }
                 var localColorId by remember(preferences.clockColorId) { mutableStateOf(preferences.clockColorId) }
+                var localFullColor by remember(preferences.clockFullColor) { mutableStateOf(preferences.clockFullColor) }
                 val activeClockStyle = remember(localStyleId) { ClockStyle.fromId(localStyleId) }
                 val activeClockColor = remember(localColorId) { ClockColorOption.fromId(localColorId) }
                 var previewTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -350,7 +351,8 @@ fun SettingsScreen(
                             style = activeClockStyle,
                             accentColor = activeClockColor.color,
                             isLarge = false,
-                            isFullScreen = false
+                            isFullScreen = false,
+                            fullColor = localFullColor
                         )
                     }
 
@@ -393,10 +395,33 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Clock Colour", style = MaterialTheme.typography.bodyLarge, color = Color.White)
-                        Text(activeClockColor.displayName, style = MaterialTheme.typography.bodyMedium, color = activeClockColor.color, fontWeight = FontWeight.SemiBold)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Clock Colour", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text(activeClockColor.displayName, style = MaterialTheme.typography.bodySmall, color = activeClockColor.color, fontWeight = FontWeight.SemiBold)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(false to "Highlights", true to "Full Colour").forEach { (isFull, label) ->
+                                val selected = localFullColor == isFull
+                                Surface(
+                                    onClick = {
+                                        localFullColor = isFull
+                                        coroutineScope.launch { preferencesRepository.setClockFullColor(isFull) }
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (selected) SamsungBlue else Color(0xFF26262A),
+                                    border = if (selected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f))
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
-                    Text("Includes classic tones, retro red LED, and soft pastel shades", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     LazyRow(
@@ -439,6 +464,7 @@ fun SettingsScreen(
             item {
                 var localCalStyleId by remember(preferences.calendarStyle) { mutableStateOf(preferences.calendarStyle) }
                 var localCalColorId by remember(preferences.calendarColorId) { mutableStateOf(preferences.calendarColorId) }
+                var localCalFullColor by remember(preferences.calendarFullColor) { mutableStateOf(preferences.calendarFullColor) }
                 val activeCalStyle = remember(localCalStyleId) { CalendarStyle.fromId(localCalStyleId) }
                 val activeCalColor = remember(localCalColorId) { ClockColorOption.fromCalendarDefault(localCalColorId) }
 
@@ -487,10 +513,33 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Calendar Colour", style = MaterialTheme.typography.bodyLarge, color = Color.White)
-                        Text(activeCalColor.displayName, style = MaterialTheme.typography.bodyMedium, color = activeCalColor.color, fontWeight = FontWeight.SemiBold)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Calendar Colour", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text(activeCalColor.displayName, style = MaterialTheme.typography.bodySmall, color = activeCalColor.color, fontWeight = FontWeight.SemiBold)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(false to "Highlights", true to "Full Colour").forEach { (isFull, label) ->
+                                val selected = localCalFullColor == isFull
+                                Surface(
+                                    onClick = {
+                                        localCalFullColor = isFull
+                                        coroutineScope.launch { preferencesRepository.setCalendarFullColor(isFull) }
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (selected) SamsungBlue else Color(0xFF26262A),
+                                    border = if (selected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f))
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
-                    Text("Accent colour for month headers, weekend labels, today marker, and event dots", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     LazyRow(

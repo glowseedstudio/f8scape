@@ -31,8 +31,10 @@ data class UserPreferences(
     val showBattery: Boolean = true,
     val clockStyle: String = "DEFAULT",
     val clockColorId: String = "PURE_WHITE",
+    val clockFullColor: Boolean = false,
     val calendarStyle: String = "DEFAULT",
-    val calendarColorId: String = "SIGNATURE_BLUE"
+    val calendarColorId: String = "SIGNATURE_BLUE",
+    val calendarFullColor: Boolean = false
 )
 
 class PreferencesRepository(
@@ -57,8 +59,10 @@ class PreferencesRepository(
         val SHOW_BATTERY = booleanPreferencesKey("show_battery")
         val CLOCK_STYLE = stringPreferencesKey("clock_style")
         val CLOCK_COLOR_ID = stringPreferencesKey("clock_color_id")
+        val CLOCK_FULL_COLOR = booleanPreferencesKey("clock_full_color")
         val CALENDAR_STYLE = stringPreferencesKey("calendar_style")
         val CALENDAR_COLOR_ID = stringPreferencesKey("calendar_color_id")
+        val CALENDAR_FULL_COLOR = booleanPreferencesKey("calendar_full_color")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -89,8 +93,10 @@ class PreferencesRepository(
                 showBattery = preferences[PreferencesKeys.SHOW_BATTERY] ?: true,
                 clockStyle = preferences[PreferencesKeys.CLOCK_STYLE] ?: "DEFAULT",
                 clockColorId = preferences[PreferencesKeys.CLOCK_COLOR_ID] ?: "PURE_WHITE",
+                clockFullColor = preferences[PreferencesKeys.CLOCK_FULL_COLOR] ?: false,
                 calendarStyle = preferences[PreferencesKeys.CALENDAR_STYLE] ?: "DEFAULT",
-                calendarColorId = preferences[PreferencesKeys.CALENDAR_COLOR_ID] ?: "SIGNATURE_BLUE"
+                calendarColorId = preferences[PreferencesKeys.CALENDAR_COLOR_ID] ?: "SIGNATURE_BLUE",
+                calendarFullColor = preferences[PreferencesKeys.CALENDAR_FULL_COLOR] ?: false
             )
         }
 
@@ -194,6 +200,12 @@ class PreferencesRepository(
         }
     }
 
+    suspend fun setClockFullColor(fullColor: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CLOCK_FULL_COLOR] = fullColor
+        }
+    }
+
     suspend fun setCalendarStyle(styleId: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CALENDAR_STYLE] = styleId
@@ -203,6 +215,12 @@ class PreferencesRepository(
     suspend fun setCalendarColorId(colorId: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CALENDAR_COLOR_ID] = colorId
+        }
+    }
+
+    suspend fun setCalendarFullColor(fullColor: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CALENDAR_FULL_COLOR] = fullColor
         }
     }
 }

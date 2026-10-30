@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -21,9 +23,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.f8scape.app.theme.PureBlack
 
+private val CenteredNumberTextStyle = TextStyle(
+    platformStyle = PlatformTextStyle(includeFontPadding = false)
+)
+
 /**
  * Renders a single day cell inside either the compact AmbientCalendarCard or the full-screen
- * ExpandedMonthCalendarView according to the user's selected [CalendarStyle] and [accentColor].
+ * ExpandedMonthCalendarView according to the user's selected [CalendarStyle], [accentColor],
+ * and [fullColor] mode.
+ *
+ * Uses a single-center Box architecture with [PlatformTextStyle(includeFontPadding = false)]
+ * so every day numeral sits on the exact same horizontal baseline and is mathematically centered
+ * inside circles, rings, and tiles without being pushed off-center by event dots.
  */
 @Composable
 fun StyledCalendarDayCell(
@@ -33,15 +44,17 @@ fun StyledCalendarDayCell(
     style: CalendarStyle,
     accentColor: Color,
     isCompact: Boolean,
+    fullColor: Boolean = false,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val cellHeight: Dp = if (isCompact) 28.dp else 44.dp
-    val badgeSize: Dp = if (isCompact) 21.dp else 34.dp
-    val fontSize: TextUnit = if (isCompact) 11.sp else 16.sp
+    val badgeSize: Dp = if (isCompact) 24.dp else 36.dp
+    val fontSize: TextUnit = if (isCompact) 11.sp else 15.sp
     val isLightAccent = accentColor == Color.White ||
         (accentColor.red * 0.299f + accentColor.green * 0.587f + accentColor.blue * 0.114f) > 0.65f
     val onAccentTextColor = if (isLightAccent) PureBlack else Color.White
+    val regularTextColor = if (fullColor) accentColor.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.90f)
     val clickModifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
 
     when (style) {
@@ -62,6 +75,7 @@ fun StyledCalendarDayCell(
                     ) {
                         Text(
                             text = dayNum.toString(),
+                            style = CenteredNumberTextStyle,
                             fontSize = fontSize,
                             fontWeight = FontWeight.Bold,
                             color = onAccentTextColor,
@@ -69,27 +83,22 @@ fun StyledCalendarDayCell(
                         )
                     }
                 } else {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = dayNum.toString(),
-                            fontSize = fontSize,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.88f),
-                            textAlign = TextAlign.Center
+                    Text(
+                        text = dayNum.toString(),
+                        style = CenteredNumberTextStyle,
+                        fontSize = fontSize,
+                        fontWeight = FontWeight.Medium,
+                        color = regularTextColor,
+                        textAlign = TextAlign.Center
+                    )
+                    if (hasEvents) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = if (isCompact) 1.dp else 3.dp)
+                                .size(if (isCompact) 3.5.dp else 4.5.dp)
+                                .background(accentColor, CircleShape)
                         )
-                        if (hasEvents) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = if (isCompact) 1.5.dp else 3.dp)
-                                    .size(if (isCompact) 3.dp else 4.5.dp)
-                                    .background(accentColor, CircleShape)
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.height(if (isCompact) 4.dp else 7.dp))
-                        }
                     }
                 }
             }
@@ -97,37 +106,47 @@ fun StyledCalendarDayCell(
 
         CalendarStyle.ROUNDED_TILES -> {
             val tileShape = RoundedCornerShape(if (isCompact) 7.dp else 11.dp)
+            val tileSize = if (isCompact) 25.dp else 38.dp
             Box(
                 modifier = modifier
-                    .padding(horizontal = if (isCompact) 1.5.dp else 3.dp, vertical = 1.dp)
                     .height(cellHeight)
-                    .clip(tileShape)
-                    .background(
-                        when {
-                            isToday -> accentColor
-                            hasEvents -> accentColor.copy(alpha = 0.14f)
-                            else -> Color.White.copy(alpha = 0.05f)
-                        }
-                    )
-                    .then(
-                        if (hasEvents && !isToday) {
-                            Modifier.border(1.dp, accentColor.copy(alpha = 0.45f), tileShape)
-                        } else Modifier
-                    )
                     .then(clickModifier),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = dayNum.toString(),
-                    fontSize = fontSize,
-                    fontWeight = if (isToday || hasEvents) FontWeight.Bold else FontWeight.Medium,
-                    color = when {
-                        isToday -> onAccentTextColor
-                        hasEvents -> accentColor
-                        else -> Color.White.copy(alpha = 0.85f)
-                    },
-                    textAlign = TextAlign.Center
-                )
+                Box(
+                    modifier = Modifier
+                        .size(width = if (isCompact) 28.dp else 42.dp, height = tileSize)
+                        .clip(tileShape)
+                        .background(
+                            when {
+                                isToday -> accentColor
+                                hasEvents -> accentColor.copy(alpha = 0.16f)
+                                fullColor -> accentColor.copy(alpha = 0.08f)
+                                else -> Color.White.copy(alpha = 0.06f)
+                            }
+                        )
+                        .then(
+                            if (hasEvents && !isToday) {
+                                Modifier.border(1.dp, accentColor.copy(alpha = 0.50f), tileShape)
+                            } else if (fullColor && !isToday) {
+                                Modifier.border(0.5.dp, accentColor.copy(alpha = 0.22f), tileShape)
+                            } else Modifier
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = dayNum.toString(),
+                        style = CenteredNumberTextStyle,
+                        fontSize = fontSize,
+                        fontWeight = if (isToday || hasEvents) FontWeight.Bold else FontWeight.Medium,
+                        color = when {
+                            isToday -> onAccentTextColor
+                            hasEvents -> accentColor
+                            else -> regularTextColor
+                        },
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
 
@@ -148,6 +167,7 @@ fun StyledCalendarDayCell(
                     ) {
                         Text(
                             text = dayNum.toString(),
+                            style = CenteredNumberTextStyle,
                             fontSize = fontSize,
                             fontWeight = FontWeight.Bold,
                             color = accentColor,
@@ -155,71 +175,74 @@ fun StyledCalendarDayCell(
                         )
                     }
                 } else {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = dayNum.toString(),
-                            fontSize = fontSize,
-                            fontWeight = FontWeight.Light,
-                            color = if (hasEvents) accentColor else Color.White.copy(alpha = 0.80f),
-                            textAlign = TextAlign.Center
+                    Text(
+                        text = dayNum.toString(),
+                        style = CenteredNumberTextStyle,
+                        fontSize = fontSize,
+                        fontWeight = if (hasEvents) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (hasEvents) accentColor else regularTextColor,
+                        textAlign = TextAlign.Center
+                    )
+                    if (hasEvents) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = if (isCompact) 1.5.dp else 3.dp)
+                                .width(if (isCompact) 10.dp else 14.dp)
+                                .height(if (isCompact) 1.5.dp else 2.dp)
+                                .background(accentColor, RoundedCornerShape(1.dp))
                         )
-                        if (hasEvents) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = if (isCompact) 1.5.dp else 2.dp)
-                                    .width(if (isCompact) 10.dp else 16.dp)
-                                    .height(if (isCompact) 1.5.dp else 2.dp)
-                                    .background(accentColor, RoundedCornerShape(1.dp))
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.height(if (isCompact) 3.dp else 5.dp))
-                        }
                     }
                 }
             }
         }
 
         CalendarStyle.RETRO_MATRIX -> {
-            val matrixShape = RoundedCornerShape(if (isCompact) 4.dp else 6.dp)
+            val matrixShape = RoundedCornerShape(if (isCompact) 5.dp else 8.dp)
+            val boxW = if (isCompact) 28.dp else 42.dp
+            val boxH = if (isCompact) 24.dp else 36.dp
             Box(
                 modifier = modifier
-                    .padding(1.dp)
                     .height(cellHeight)
-                    .clip(matrixShape)
-                    .then(
-                        if (isToday) {
-                            Modifier
-                                .background(accentColor.copy(alpha = 0.18f))
-                                .border(if (isCompact) 1.2.dp else 1.8.dp, accentColor, matrixShape)
-                        } else Modifier
-                    )
                     .then(clickModifier),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                Box(
+                    modifier = Modifier
+                        .size(width = boxW, height = boxH)
+                        .clip(matrixShape)
+                        .then(
+                            if (isToday) {
+                                Modifier
+                                    .background(accentColor.copy(alpha = 0.20f))
+                                    .border(if (isCompact) 1.2.dp else 1.8.dp, accentColor, matrixShape)
+                            } else if (hasEvents) {
+                                Modifier.border(1.dp, accentColor.copy(alpha = 0.45f), matrixShape)
+                            } else Modifier
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = String.format("%02d", dayNum),
-                        fontSize = if (isCompact) 10.sp else 15.sp,
+                        style = CenteredNumberTextStyle,
+                        fontSize = if (isCompact) 10.sp else 14.sp,
                         fontFamily = FontFamily.Monospace,
-                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isToday) accentColor else accentColor.copy(alpha = 0.80f),
+                        fontWeight = if (isToday || hasEvents) FontWeight.Bold else FontWeight.Medium,
+                        color = when {
+                            isToday -> accentColor
+                            hasEvents -> accentColor
+                            else -> regularTextColor
+                        },
                         textAlign = TextAlign.Center
                     )
-                    if (hasEvents) {
+                    if (hasEvents && !isToday) {
                         Box(
                             modifier = Modifier
-                                .padding(top = 1.dp)
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = if (isCompact) 1.5.dp else 2.5.dp)
                                 .size(if (isCompact) 3.dp else 4.dp)
                                 .background(accentColor)
                         )
-                    } else {
-                        Spacer(modifier = Modifier.height(if (isCompact) 4.dp else 5.dp))
                     }
                 }
             }
@@ -233,36 +256,31 @@ fun StyledCalendarDayCell(
                     .then(clickModifier),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = dayNum.toString(),
-                        fontSize = if (isCompact) 12.sp else 18.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-0.5).sp,
-                        color = when {
-                            isToday -> accentColor
-                            hasEvents -> Color.White
-                            else -> Color.White.copy(alpha = 0.65f)
-                        },
-                        textAlign = TextAlign.Center
+                Text(
+                    text = dayNum.toString(),
+                    style = CenteredNumberTextStyle,
+                    fontSize = if (isCompact) 12.sp else 17.sp,
+                    fontWeight = if (isToday) FontWeight.Black else FontWeight.Bold,
+                    letterSpacing = (-0.5).sp,
+                    color = when {
+                        isToday -> accentColor
+                        hasEvents -> if (fullColor) accentColor else Color.White
+                        else -> if (fullColor) accentColor.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.72f)
+                    },
+                    textAlign = TextAlign.Center
+                )
+                if (isToday || hasEvents) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = if (isCompact) 1.5.dp else 3.dp)
+                            .width(if (isToday) (if (isCompact) 14.dp else 22.dp) else (if (isCompact) 6.dp else 10.dp))
+                            .height(if (isCompact) 2.dp else 3.dp)
+                            .background(
+                                if (isToday) accentColor else accentColor.copy(alpha = 0.75f),
+                                RoundedCornerShape(2.dp)
+                            )
                     )
-                    if (isToday || hasEvents) {
-                        Box(
-                            modifier = Modifier
-                                .padding(top = 1.dp)
-                                .width(if (isToday) (if (isCompact) 14.dp else 22.dp) else (if (isCompact) 6.dp else 10.dp))
-                                .height(if (isCompact) 2.5.dp else 3.5.dp)
-                                .background(
-                                    if (isToday) accentColor else accentColor.copy(alpha = 0.70f),
-                                    RoundedCornerShape(2.dp)
-                                )
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.height(if (isCompact) 3.5.dp else 4.5.dp))
-                    }
                 }
             }
         }

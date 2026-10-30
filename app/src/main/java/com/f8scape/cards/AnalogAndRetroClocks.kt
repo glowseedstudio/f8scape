@@ -33,6 +33,7 @@ fun HorologyAnalogClock(
     currentTimeMs: Long,
     accentColor: Color,
     dialSize: Dp,
+    fullColor: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val cal = remember(currentTimeMs) {
@@ -41,6 +42,8 @@ fun HorologyAnalogClock(
     val hours = cal.get(Calendar.HOUR)
     val minutes = cal.get(Calendar.MINUTE)
     val seconds = cal.get(Calendar.SECOND)
+
+    val primaryElementColor = if (fullColor) accentColor else Color.White
 
     val textPaint = remember {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -71,10 +74,10 @@ fun HorologyAnalogClock(
 
             val tickColor = when {
                 isCurrentSecond -> accentColor
-                isCardinal -> accentColor
-                isHourMark -> accentColor.copy(alpha = 0.85f)
+                isCardinal -> primaryElementColor
+                isHourMark -> if (fullColor) accentColor.copy(alpha = 0.85f) else accentColor.copy(alpha = 0.90f)
                 isPassedSecond -> accentColor.copy(alpha = 0.45f)
-                else -> accentColor.copy(alpha = 0.22f)
+                else -> primaryElementColor.copy(alpha = 0.22f)
             }
 
             val strokeW = when {
@@ -102,11 +105,11 @@ fun HorologyAnalogClock(
             )
         }
 
-        // 2. Draw 12, 3, 6, 9 numerals in the selected accentColor
+        // 2. Draw 12, 3, 6, 9 numerals
         val numeralRadius = radius * 0.69f
         val fontSizePx = radius * 0.21f
         textPaint.textSize = fontSizePx
-        textPaint.color = accentColor.toArgb()
+        textPaint.color = primaryElementColor.toArgb()
         val fontMetrics = textPaint.fontMetrics
         val textCenterOffset = (fontMetrics.descent + fontMetrics.ascent) / 2f
 
@@ -122,7 +125,7 @@ fun HorologyAnalogClock(
         val hourAngleRad = Math.toRadians(((hours + minutes / 60.0) * 30.0) - 90.0)
         val hourLength = radius * 0.50f
         drawLine(
-            color = accentColor,
+            color = primaryElementColor,
             start = center,
             end = Offset(
                 center.x + (hourLength * cos(hourAngleRad)).toFloat(),
@@ -136,7 +139,7 @@ fun HorologyAnalogClock(
         val minuteAngleRad = Math.toRadians(((minutes + seconds / 60.0) * 6.0) - 90.0)
         val minuteLength = radius * 0.74f
         drawLine(
-            color = accentColor.copy(alpha = 0.90f),
+            color = primaryElementColor.copy(alpha = 0.90f),
             start = center,
             end = Offset(
                 center.x + (minuteLength * cos(minuteAngleRad)).toFloat(),
@@ -146,7 +149,7 @@ fun HorologyAnalogClock(
             cap = StrokeCap.Round
         )
 
-        // 5. Second Hand with tail counterweight
+        // 5. Second Hand with tail counterweight (always highlighted in accentColor)
         val secondAngleRad = Math.toRadians((seconds * 6.0) - 90.0)
         val secondLength = radius * 0.84f
         val tailLength = radius * 0.18f
@@ -172,33 +175,48 @@ fun HorologyAnalogClock(
 
 /**
  * Old-School 7-Segment LED Digital Clock:
- * Renders classic 7-segment digits with subtle unlit ghost segments and bright lit segments.
+ * Renders classic 7-segment digits with subtle unlit ghost segments, bright lit segments,
+ * and hardware-style AM / PM LED indicators when the user's phone is in 12-hour mode.
  */
 @Composable
 fun RetroLedDigitalClock(
     currentTimeMs: Long,
     accentColor: Color,
     digitHeight: Dp,
+    is24Hour: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val cal = remember(currentTimeMs) {
         Calendar.getInstance().apply { timeInMillis = currentTimeMs }
     }
-    val rawHour = cal.get(Calendar.HOUR)
-    val hour12 = if (rawHour == 0) 12 else rawHour
+    val displayHour = if (is24Hour) {
+        cal.get(Calendar.HOUR_OF_DAY)
+    } else {
+        val raw = cal.get(Calendar.HOUR)
+        if (raw == 0) 12 else raw
+    }
+    val isPm = cal.get(Calendar.AM_PM) == Calendar.PM
     val minute = cal.get(Calendar.MINUTE)
     val second = cal.get(Calendar.SECOND)
 
-    val h1 = hour12 / 10
-    val h2 = hour12 % 10
+    val h1 = displayHour / 10
+    val h2 = displayHour % 10
     val m1 = minute / 10
     val m2 = minute % 10
     val colonVisible = (second % 2) == 0
 
-    val digitWidth = digitHeight * 0.56f
-    val colonWidth = digitHeight * 0.18f
-    val spacing = digitHeight * 0.10f
-    val totalWidth = (digitWidth * 4) + colonWidth + (spacing * 4)
+    val digitWidth = digitHeight * 0.54f
+    val colonWidth = digitHeight * 0.16f
+    val spacing = digitHeight * 0.09f
+    val amPmColumnWidth = if (is24Hour) 0.dp else (digitHeight * 0.34f)
+    val totalWidth = (digitWidth * 4) + colonWidth + (spacing * (if (is24Hour) 4 else 5)) + amPmColumnWidth
+
+    val amPmPaint = remember {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.LEFT
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        }
+    }
 
     Canvas(
         modifier = modifier
@@ -213,9 +231,9 @@ fun RetroLedDigitalClock(
 
         var xCursor = 0f
 
-        // Hour Tens (if 0, draw ghost segments only like a real bedside clock)
+        // Hour Tens (in 12h mode, if 0, draw ghost segments only like a real bedside clock; in 24h mode, draw 0)
         drawSevenSegmentDigit(
-            digit = if (h1 == 0) -1 else h1,
+            digit = if (!is24Hour && h1 == 0) -1 else h1,
             topLeft = Offset(xCursor, 0f),
             width = dw,
             height = dh,
@@ -274,6 +292,46 @@ fun RetroLedDigitalClock(
             activeColor = accentColor,
             ghostColor = accentColor.copy(alpha = 0.09f)
         )
+
+        // Hardware-style AM / PM LED indicators when in 12-hour mode
+        if (!is24Hour) {
+            xCursor += dw + sp * 1.15f
+            val amColor = if (!isPm) accentColor else accentColor.copy(alpha = 0.12f)
+            val pmColor = if (isPm) accentColor else accentColor.copy(alpha = 0.12f)
+            val labelTextSize = (dh * 0.165f).coerceAtLeast(18f)
+            amPmPaint.textSize = labelTextSize
+            val indicatorDotR = (dh * 0.032f).coerceAtLeast(3f)
+
+            // AM row (top)
+            val amY = dh * 0.26f
+            drawCircle(
+                color = amColor,
+                radius = indicatorDotR,
+                center = Offset(xCursor + indicatorDotR, amY - labelTextSize * 0.34f)
+            )
+            amPmPaint.color = amColor.toArgb()
+            drawContext.canvas.nativeCanvas.drawText(
+                "AM",
+                xCursor + indicatorDotR * 2.8f,
+                amY,
+                amPmPaint
+            )
+
+            // PM row (bottom)
+            val pmY = dh * 0.82f
+            drawCircle(
+                color = pmColor,
+                radius = indicatorDotR,
+                center = Offset(xCursor + indicatorDotR, pmY - labelTextSize * 0.34f)
+            )
+            amPmPaint.color = pmColor.toArgb()
+            drawContext.canvas.nativeCanvas.drawText(
+                "PM",
+                xCursor + indicatorDotR * 2.8f,
+                pmY,
+                amPmPaint
+            )
+        }
     }
 }
 

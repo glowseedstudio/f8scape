@@ -138,8 +138,10 @@ fun StandbyDashboard(
     var localCards by remember(currentCards) { mutableStateOf(currentCards) }
     var localClockStyle by remember(preferences.clockStyle) { mutableStateOf(preferences.clockStyle) }
     var localClockColorId by remember(preferences.clockColorId) { mutableStateOf(preferences.clockColorId) }
+    var localClockFullColor by remember(preferences.clockFullColor) { mutableStateOf(preferences.clockFullColor) }
     var localCalendarStyle by remember(preferences.calendarStyle) { mutableStateOf(preferences.calendarStyle) }
     var localCalendarColorId by remember(preferences.calendarColorId) { mutableStateOf(preferences.calendarColorId) }
+    var localCalendarFullColor by remember(preferences.calendarFullColor) { mutableStateOf(preferences.calendarFullColor) }
 
     // Periodic second/minute tick
     LaunchedEffect(Unit) {
@@ -175,6 +177,16 @@ fun StandbyDashboard(
             easing = FastOutSlowInEasing
         ),
         label = "IdleDimAlpha"
+    )
+
+    // Fade page indicator off after 10 seconds of inactivity, restoring immediately on touch
+    val pageIndicatorAlpha by animateFloatAsState(
+        targetValue = if (isIdleDimmed) 0.0f else 1.0f,
+        animationSpec = tween(
+            durationMillis = 800,
+            easing = FastOutSlowInEasing
+        ),
+        label = "PageIndicatorAlpha"
     )
 
     // OLED Burn-In Orbital Drift (8-point minute-boundary cycle)
@@ -393,6 +405,7 @@ fun StandbyDashboard(
                                             showBattery = preferences.showBattery,
                                             clockStyleId = localClockStyle,
                                             clockColorId = localClockColorId,
+                                            clockFullColor = localClockFullColor,
                                             isClockEditorOpen = isClockEditorOpen,
                                             onOpenClockEditor = { isClockEditorOpen = true },
                                             onCloseClockEditor = { isClockEditorOpen = false },
@@ -403,6 +416,10 @@ fun StandbyDashboard(
                                             onSelectClockColor = { color ->
                                                 localClockColorId = color.id
                                                 coroutineScope.launch { preferencesRepo.setClockColorId(color.id) }
+                                            },
+                                            onToggleClockFullColor = { full ->
+                                                localClockFullColor = full
+                                                coroutineScope.launch { preferencesRepo.setClockFullColor(full) }
                                             },
                                             onDoubleTap = onDismissRequest,
                                             modifier = Modifier.fillMaxSize()
@@ -417,6 +434,7 @@ fun StandbyDashboard(
                                             maskTitle = preferences.calendarMaskLocked,
                                             calendarStyleId = localCalendarStyle,
                                             calendarColorId = localCalendarColorId,
+                                            calendarFullColor = localCalendarFullColor,
                                             isCalendarEditorOpen = isCalendarEditorOpen,
                                             onOpenCalendarEditor = { isCalendarEditorOpen = true },
                                             onCloseCalendarEditor = { isCalendarEditorOpen = false },
@@ -427,6 +445,10 @@ fun StandbyDashboard(
                                             onSelectCalendarColor = { color ->
                                                 localCalendarColorId = color.id
                                                 coroutineScope.launch { preferencesRepo.setCalendarColorId(color.id) }
+                                            },
+                                            onToggleCalendarFullColor = { full ->
+                                                localCalendarFullColor = full
+                                                coroutineScope.launch { preferencesRepo.setCalendarFullColor(full) }
                                             },
                                             onDoubleTap = onDismissRequest,
                                             modifier = Modifier.fillMaxSize()
@@ -443,12 +465,13 @@ fun StandbyDashboard(
                                 }
                             }
 
-                            // Subtle pill page indicator at the bottom
-                            if (availablePages.size > 1 && !isClockEditorOpen && !isCalendarEditorOpen) {
+                            // Subtle pill page indicator at the bottom (fades out after 10s of inactivity, returns on touch)
+                            if (availablePages.size > 1 && !isClockEditorOpen && !isCalendarEditorOpen && pageIndicatorAlpha > 0.01f) {
                                 Row(
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
-                                        .padding(bottom = 4.dp),
+                                        .padding(bottom = 4.dp)
+                                        .alpha(pageIndicatorAlpha),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -484,8 +507,10 @@ fun StandbyDashboard(
                                 showBattery = preferences.showBattery,
                                 clockStyleId = localClockStyle,
                                 clockColorId = localClockColorId,
+                                clockFullColor = localClockFullColor,
                                 calendarStyleId = localCalendarStyle,
                                 calendarColorId = localCalendarColorId,
+                                calendarFullColor = localCalendarFullColor,
                                 maskCalendar = preferences.calendarMaskLocked,
                                 isEditMode = isEditMode,
                                 onEnterEditMode = { isEditMode = true },
@@ -958,11 +983,13 @@ private fun ExpandedMonthCalendarView(
     maskTitle: Boolean = false,
     calendarStyleId: String = "DEFAULT",
     calendarColorId: String = "SIGNATURE_BLUE",
+    calendarFullColor: Boolean = false,
     isCalendarEditorOpen: Boolean = false,
     onOpenCalendarEditor: () -> Unit = {},
     onCloseCalendarEditor: () -> Unit = {},
     onSelectCalendarStyle: (CalendarStyle) -> Unit = {},
     onSelectCalendarColor: (ClockColorOption) -> Unit = {},
+    onToggleCalendarFullColor: (Boolean) -> Unit = {},
     onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -1081,7 +1108,7 @@ private fun ExpandedMonthCalendarView(
                             text = dayName,
                             fontSize = if (isCalendarEditorOpen) 12.sp else 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isWeekend) resolvedColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.45f),
+                            color = if (isWeekend || calendarFullColor) resolvedColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.45f),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.weight(1f)
                         )
@@ -1113,7 +1140,7 @@ private fun ExpandedMonthCalendarView(
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(if (isCalendarEditorOpen) 32.dp else 44.dp)
+                                            .height(if (isCalendarEditorOpen) 34.dp else 46.dp)
                                             .clip(RoundedCornerShape(12.dp))
                                             .pointerInput(dayNum, isCalendarEditorOpen) {
                                                 detectTapGestures(
@@ -1137,7 +1164,8 @@ private fun ExpandedMonthCalendarView(
                                             hasEvents = hasEvents,
                                             style = resolvedStyle,
                                             accentColor = resolvedColor,
-                                            isCompact = isCalendarEditorOpen
+                                            isCompact = isCalendarEditorOpen,
+                                            fullColor = calendarFullColor
                                         )
                                     }
                                 } else {
@@ -1153,8 +1181,10 @@ private fun ExpandedMonthCalendarView(
                 LiveCalendarEditorPanel(
                     selectedStyle = resolvedStyle,
                     selectedColor = resolvedColorOption,
+                    fullColor = calendarFullColor,
                     onSelectStyle = onSelectCalendarStyle,
                     onSelectColor = onSelectCalendarColor,
+                    onToggleFullColor = onToggleCalendarFullColor,
                     onDone = onCloseCalendarEditor,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -1176,11 +1206,13 @@ private fun BigClockView(
     showBattery: Boolean,
     clockStyleId: String = "DEFAULT",
     clockColorId: String = "PURE_WHITE",
+    clockFullColor: Boolean = false,
     isClockEditorOpen: Boolean = false,
     onOpenClockEditor: () -> Unit = {},
     onCloseClockEditor: () -> Unit = {},
     onSelectClockStyle: (ClockStyle) -> Unit = {},
     onSelectClockColor: (ClockColorOption) -> Unit = {},
+    onToggleClockFullColor: (Boolean) -> Unit = {},
     onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -1263,7 +1295,8 @@ private fun BigClockView(
                     style = resolvedStyle,
                     accentColor = resolvedColorOption.color,
                     isLarge = true,
-                    isFullScreen = !isClockEditorOpen
+                    isFullScreen = !isClockEditorOpen,
+                    fullColor = clockFullColor
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -1358,8 +1391,10 @@ private fun BigClockView(
                 LiveClockEditorPanel(
                     selectedStyle = resolvedStyle,
                     selectedColor = resolvedColorOption,
+                    fullColor = clockFullColor,
                     onSelectStyle = onSelectClockStyle,
                     onSelectColor = onSelectClockColor,
+                    onToggleFullColor = onToggleClockFullColor,
                     onDone = onCloseClockEditor,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )

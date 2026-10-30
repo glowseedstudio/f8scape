@@ -1,5 +1,6 @@
 package com.f8scape.cards
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,8 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -32,7 +35,8 @@ import java.util.Locale
 
 /**
  * Unified clock face renderer supporting all 6 flagship styles and 12 colors,
- * scaling cleanly between the standard dashboard card and full-screen BigClockView.
+ * scaling cleanly between the standard dashboard card and full-screen BigClockView,
+ * and automatically respecting the user's system 12-hour / 24-hour time preference.
  */
 @Composable
 fun F8ClockFace(
@@ -41,19 +45,25 @@ fun F8ClockFace(
     accentColor: Color,
     isLarge: Boolean,
     isFullScreen: Boolean = false,
+    fullColor: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val is24Hour = remember(context, currentTimeMs / 5000L) {
+        DateFormat.is24HourFormat(context)
+    }
+
     when (style) {
         ClockStyle.DEFAULT -> {
             Text(
-                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = false),
+                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = is24Hour),
                 fontSize = when {
-                    isFullScreen -> 112.sp
-                    isLarge -> 84.sp
-                    else -> 62.sp
+                    isFullScreen -> 148.sp
+                    isLarge -> 88.sp
+                    else -> 64.sp
                 },
                 fontWeight = if (isFullScreen) FontWeight.Bold else FontWeight.Light,
-                letterSpacing = if (isFullScreen) (-3.0).sp else (-2.0).sp,
+                letterSpacing = if (isFullScreen) (-3.5).sp else (-2.0).sp,
                 color = accentColor,
                 modifier = modifier
             )
@@ -61,21 +71,22 @@ fun F8ClockFace(
 
         ClockStyle.RETRO_DIGITAL -> {
             val digitHeight = when {
-                isFullScreen -> 96.dp
-                isLarge -> 68.dp
-                else -> 52.dp
+                isFullScreen -> 136.dp
+                isLarge -> 72.dp
+                else -> 54.dp
             }
             RetroLedDigitalClock(
                 currentTimeMs = currentTimeMs,
                 accentColor = accentColor,
                 digitHeight = digitHeight,
+                is24Hour = is24Hour,
                 modifier = modifier.padding(vertical = 6.dp)
             )
         }
 
         ClockStyle.CHRONO_ANALOG -> {
             val dialSize = when {
-                isFullScreen -> 264.dp
+                isFullScreen -> 284.dp
                 isLarge -> 196.dp
                 else -> 152.dp
             }
@@ -83,6 +94,7 @@ fun F8ClockFace(
                 currentTimeMs = currentTimeMs,
                 accentColor = accentColor,
                 dialSize = dialSize,
+                fullColor = fullColor,
                 modifier = modifier.padding(vertical = 4.dp)
             )
         }
@@ -93,6 +105,7 @@ fun F8ClockFace(
                 accentColor = accentColor,
                 isFullScreen = isFullScreen,
                 isLarge = isLarge,
+                is24Hour = is24Hour,
                 modifier = modifier
             )
         }
@@ -103,6 +116,8 @@ fun F8ClockFace(
                 accentColor = accentColor,
                 isFullScreen = isFullScreen,
                 isLarge = isLarge,
+                is24Hour = is24Hour,
+                fullColor = fullColor,
                 modifier = modifier
             )
         }
@@ -113,6 +128,7 @@ fun F8ClockFace(
                 accentColor = accentColor,
                 isFullScreen = isFullScreen,
                 isLarge = isLarge,
+                is24Hour = is24Hour,
                 modifier = modifier
             )
         }
@@ -125,59 +141,95 @@ private fun MechanicalFlipClock(
     accentColor: Color,
     isFullScreen: Boolean,
     isLarge: Boolean,
+    is24Hour: Boolean,
     modifier: Modifier = Modifier
 ) {
     val cal = remember(currentTimeMs) {
         Calendar.getInstance().apply { timeInMillis = currentTimeMs }
     }
-    val rawHour = cal.get(Calendar.HOUR)
-    val hour12 = if (rawHour == 0) 12 else rawHour
+    val displayHour = if (is24Hour) {
+        cal.get(Calendar.HOUR_OF_DAY)
+    } else {
+        val raw = cal.get(Calendar.HOUR)
+        if (raw == 0) 12 else raw
+    }
+    val amPm = if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
     val minute = cal.get(Calendar.MINUTE)
-    val hourStr = String.format(Locale.US, "%02d", hour12)
+    val hourStr = String.format(Locale.US, "%02d", displayHour)
     val minStr = String.format(Locale.US, "%02d", minute)
 
     val cardWidth = when {
-        isFullScreen -> 118.dp
-        isLarge -> 88.dp
-        else -> 68.dp
+        isFullScreen -> 156.dp
+        isLarge -> 92.dp
+        else -> 70.dp
     }
     val cardHeight = when {
-        isFullScreen -> 110.dp
-        isLarge -> 82.dp
-        else -> 64.dp
+        isFullScreen -> 146.dp
+        isLarge -> 86.dp
+        else -> 66.dp
     }
     val fontSize = when {
-        isFullScreen -> 68.sp
-        isLarge -> 50.sp
-        else -> 38.sp
+        isFullScreen -> 96.sp
+        isLarge -> 52.sp
+        else -> 40.sp
     }
 
     Row(
         modifier = modifier.padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(if (isFullScreen) 14.dp else 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (isFullScreen) 18.dp else 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        FlipFlapCard(text = hourStr, color = accentColor, width = cardWidth, height = cardHeight, fontSize = fontSize)
-        FlipFlapCard(text = minStr, color = accentColor, width = cardWidth, height = cardHeight, fontSize = fontSize)
+        FlipFlapCard(
+            text = hourStr,
+            badgeText = if (!is24Hour) amPm else null,
+            color = accentColor,
+            width = cardWidth,
+            height = cardHeight,
+            fontSize = fontSize,
+            isFullScreen = isFullScreen
+        )
+        FlipFlapCard(
+            text = minStr,
+            badgeText = null,
+            color = accentColor,
+            width = cardWidth,
+            height = cardHeight,
+            fontSize = fontSize,
+            isFullScreen = isFullScreen
+        )
     }
 }
 
 @Composable
 private fun FlipFlapCard(
     text: String,
+    badgeText: String?,
     color: Color,
     width: androidx.compose.ui.unit.Dp,
     height: androidx.compose.ui.unit.Dp,
-    fontSize: androidx.compose.ui.unit.TextUnit
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    isFullScreen: Boolean
 ) {
+    val cornerRad = if (isFullScreen) 22.dp else 16.dp
     Box(
         modifier = Modifier
             .size(width, height)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(cornerRad))
             .background(Color(0xFF17171B))
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(16.dp)),
+            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(cornerRad)),
         contentAlignment = Alignment.Center
     ) {
+        if (badgeText != null) {
+            Text(
+                text = badgeText,
+                fontSize = if (isFullScreen) 12.sp else 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = color.copy(alpha = 0.65f),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = if (isFullScreen) 12.dp else 8.dp, top = if (isFullScreen) 10.dp else 6.dp)
+            )
+        }
         Text(
             text = text,
             fontSize = fontSize,
@@ -190,7 +242,7 @@ private fun FlipFlapCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(2.dp)
+                .height(if (isFullScreen) 2.5.dp else 2.dp)
                 .background(Color.Black.copy(alpha = 0.85f))
         )
     }
@@ -202,59 +254,67 @@ private fun StackedBoldClock(
     accentColor: Color,
     isFullScreen: Boolean,
     isLarge: Boolean,
+    is24Hour: Boolean,
+    fullColor: Boolean,
     modifier: Modifier = Modifier
 ) {
     val cal = remember(currentTimeMs) {
         Calendar.getInstance().apply { timeInMillis = currentTimeMs }
     }
-    val rawHour = cal.get(Calendar.HOUR)
-    val hour12 = if (rawHour == 0) 12 else rawHour
+    val displayHour = if (is24Hour) {
+        cal.get(Calendar.HOUR_OF_DAY)
+    } else {
+        val raw = cal.get(Calendar.HOUR)
+        if (raw == 0) 12 else raw
+    }
     val minute = cal.get(Calendar.MINUTE)
     val second = cal.get(Calendar.SECOND)
     val amPm = if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
 
     val mainFontSize = when {
-        isFullScreen -> 88.sp
-        isLarge -> 66.sp
-        else -> 50.sp
+        isFullScreen -> 128.sp
+        isLarge -> 72.sp
+        else -> 54.sp
     }
 
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (isFullScreen) 16.dp else 12.dp)
     ) {
         Text(
-            text = String.format(Locale.US, "%02d", hour12),
+            text = String.format(Locale.US, "%02d", displayHour),
             fontSize = mainFontSize,
             fontWeight = FontWeight.Black,
             letterSpacing = (-3.0).sp,
-            color = accentColor
+            color = if (fullColor) accentColor else Color.White
         )
         Text(
             text = String.format(Locale.US, "%02d", minute),
             fontSize = mainFontSize,
             fontWeight = FontWeight.Black,
             letterSpacing = (-3.0).sp,
-            color = accentColor.copy(alpha = 0.78f)
+            color = if (fullColor) accentColor.copy(alpha = 0.78f) else accentColor
         )
         Column(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start
         ) {
-            Text(
-                text = amPm,
-                fontSize = if (isFullScreen) 16.sp else 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp,
-                color = accentColor
-            )
+            if (!is24Hour) {
+                Text(
+                    text = amPm,
+                    fontSize = if (isFullScreen) 20.sp else 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    color = accentColor
+                )
+            }
             Text(
                 text = String.format(Locale.US, ":%02d", second),
-                fontSize = if (isFullScreen) 18.sp else 13.sp,
+                fontSize = if (isFullScreen) 22.sp else 14.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = FontFamily.Monospace,
-                color = accentColor.copy(alpha = 0.65f)
+                color = if (fullColor) accentColor.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.65f)
             )
         }
     }
@@ -266,17 +326,25 @@ private fun NeonStencilClock(
     accentColor: Color,
     isFullScreen: Boolean,
     isLarge: Boolean,
+    is24Hour: Boolean,
     modifier: Modifier = Modifier
 ) {
     val cal = remember(currentTimeMs) {
         Calendar.getInstance().apply { timeInMillis = currentTimeMs }
     }
     val second = cal.get(Calendar.SECOND)
-    val timeText = TimeUtils.formatClockTime(currentTimeMs, is24Hour = false)
+    val amPm = if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
+    val timeText = TimeUtils.formatClockTime(currentTimeMs, is24Hour = is24Hour)
     val fontSize = when {
-        isFullScreen -> 104.sp
-        isLarge -> 78.sp
-        else -> 58.sp
+        isFullScreen -> 136.sp
+        isLarge -> 82.sp
+        else -> 60.sp
+    }
+    // Generous positive letter-spacing so adjacent neon tube strokes never overlap
+    val tubeSpacing = when {
+        isFullScreen -> 9.sp
+        isLarge -> 6.sp
+        else -> 4.sp
     }
 
     Row(
@@ -291,32 +359,53 @@ private fun NeonStencilClock(
                 style = TextStyle(
                     fontSize = fontSize,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = (-2.0).sp,
-                    color = accentColor.copy(alpha = 0.22f),
-                    drawStyle = Stroke(width = 10f, join = StrokeJoin.Round)
+                    letterSpacing = tubeSpacing,
+                    color = accentColor.copy(alpha = 0.20f),
+                    drawStyle = Stroke(
+                        width = if (isFullScreen) 11f else 8f,
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
                 )
             )
-            // Crisp geometric outline stroke
+            // Crisp geometric neon tube outline stroke
             Text(
                 text = timeText,
                 style = TextStyle(
                     fontSize = fontSize,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = (-2.0).sp,
+                    letterSpacing = tubeSpacing,
                     color = accentColor,
-                    drawStyle = Stroke(width = 3.5f, join = StrokeJoin.Round)
+                    drawStyle = Stroke(
+                        width = if (isFullScreen) 4f else 3f,
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
                 )
             )
         }
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = String.format(Locale.US, "%02d", second),
-            fontSize = if (isFullScreen) 22.sp else 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = FontFamily.Monospace,
-            color = accentColor.copy(alpha = 0.85f),
-            modifier = Modifier.padding(bottom = if (isFullScreen) 16.dp else 10.dp)
-        )
+        Spacer(modifier = Modifier.width(if (isFullScreen) 10.dp else 6.dp))
+        Column(
+            modifier = Modifier.padding(bottom = if (isFullScreen) 22.dp else 10.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            if (!is24Hour) {
+                Text(
+                    text = amPm,
+                    fontSize = if (isFullScreen) 16.sp else 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    color = accentColor.copy(alpha = 0.85f)
+                )
+            }
+            Text(
+                text = String.format(Locale.US, "%02d", second),
+                fontSize = if (isFullScreen) 24.sp else 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = FontFamily.Monospace,
+                color = accentColor.copy(alpha = 0.85f)
+            )
+        }
     }
 }
 
@@ -328,8 +417,10 @@ private fun NeonStencilClock(
 fun LiveClockEditorPanel(
     selectedStyle: ClockStyle,
     selectedColor: ClockColorOption,
+    fullColor: Boolean = false,
     onSelectStyle: (ClockStyle) -> Unit,
     onSelectColor: (ClockColorOption) -> Unit,
+    onToggleFullColor: (Boolean) -> Unit = {},
     onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -353,24 +444,57 @@ fun LiveClockEditorPanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "CLOCK STUDIO · ${selectedStyle.displayName.uppercase()} · ${selectedColor.displayName.uppercase()}",
+                text = "CLOCK STUDIO · ${selectedStyle.displayName.uppercase()}",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 1.4.sp,
+                letterSpacing = 1.2.sp,
                 color = Color.White.copy(alpha = 0.70f)
             )
-            Surface(
-                onClick = onDone,
-                shape = RoundedCornerShape(14.dp),
-                color = Color(0xFF2E75D3)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Done",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
-                )
+                Surface(
+                    onClick = { onToggleFullColor(false) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (!fullColor) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, if (!fullColor) selectedColor.color else Color.White.copy(alpha = 0.12f))
+                ) {
+                    Text(
+                        text = "Highlights",
+                        fontSize = 11.sp,
+                        fontWeight = if (!fullColor) FontWeight.Bold else FontWeight.Medium,
+                        color = if (!fullColor) Color.White else Color.White.copy(alpha = 0.65f),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+                Surface(
+                    onClick = { onToggleFullColor(true) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (fullColor) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, if (fullColor) selectedColor.color else Color.White.copy(alpha = 0.12f))
+                ) {
+                    Text(
+                        text = "Full Colour",
+                        fontSize = 11.sp,
+                        fontWeight = if (fullColor) FontWeight.Bold else FontWeight.Medium,
+                        color = if (fullColor) Color.White else Color.White.copy(alpha = 0.65f),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+                Surface(
+                    onClick = onDone,
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF2E75D3)
+                ) {
+                    Text(
+                        text = "Done",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                    )
+                }
             }
         }
 
@@ -447,8 +571,10 @@ fun LiveClockEditorPanel(
 fun LiveCalendarEditorPanel(
     selectedStyle: CalendarStyle,
     selectedColor: ClockColorOption,
+    fullColor: Boolean = false,
     onSelectStyle: (CalendarStyle) -> Unit,
     onSelectColor: (ClockColorOption) -> Unit,
+    onToggleFullColor: (Boolean) -> Unit = {},
     onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -472,24 +598,57 @@ fun LiveCalendarEditorPanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "CALENDAR STUDIO · ${selectedStyle.displayName.uppercase()} · ${selectedColor.displayName.uppercase()}",
+                text = "CALENDAR STUDIO · ${selectedStyle.displayName.uppercase()}",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 1.4.sp,
+                letterSpacing = 1.2.sp,
                 color = Color.White.copy(alpha = 0.70f)
             )
-            Surface(
-                onClick = onDone,
-                shape = RoundedCornerShape(14.dp),
-                color = Color(0xFF2E75D3)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Done",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
-                )
+                Surface(
+                    onClick = { onToggleFullColor(false) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (!fullColor) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, if (!fullColor) selectedColor.color else Color.White.copy(alpha = 0.12f))
+                ) {
+                    Text(
+                        text = "Highlights",
+                        fontSize = 11.sp,
+                        fontWeight = if (!fullColor) FontWeight.Bold else FontWeight.Medium,
+                        color = if (!fullColor) Color.White else Color.White.copy(alpha = 0.65f),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+                Surface(
+                    onClick = { onToggleFullColor(true) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (fullColor) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, if (fullColor) selectedColor.color else Color.White.copy(alpha = 0.12f))
+                ) {
+                    Text(
+                        text = "Full Colour",
+                        fontSize = 11.sp,
+                        fontWeight = if (fullColor) FontWeight.Bold else FontWeight.Medium,
+                        color = if (fullColor) Color.White else Color.White.copy(alpha = 0.65f),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+                Surface(
+                    onClick = onDone,
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF2E75D3)
+                ) {
+                    Text(
+                        text = "Done",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                    )
+                }
             }
         }
 

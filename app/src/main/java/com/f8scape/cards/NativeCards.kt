@@ -142,6 +142,7 @@ fun AmbientClockCard(
     showBattery: Boolean = true,
     clockStyleId: String = "DEFAULT",
     clockColorId: String = "PURE_WHITE",
+    clockFullColor: Boolean = false,
     isLarge: Boolean = true,
     isEditMode: Boolean = false,
     onClockClick: () -> Unit = {},
@@ -200,7 +201,8 @@ fun AmbientClockCard(
                 style = resolvedStyle,
                 accentColor = resolvedColor,
                 isLarge = isLarge,
-                isFullScreen = false
+                isFullScreen = false,
+                fullColor = clockFullColor
             )
 
             // Date directly under time
@@ -424,6 +426,7 @@ fun AmbientCalendarCard(
     maskTitle: Boolean = false,
     calendarStyleId: String = "DEFAULT",
     calendarColorId: String = "SIGNATURE_BLUE",
+    calendarFullColor: Boolean = false,
     isEditMode: Boolean = false,
     onDayClick: (year: Int, month: Int, day: Int) -> Unit = { _, _, _ -> },
     onMonthClick: () -> Unit = {},
@@ -543,7 +546,7 @@ fun AmbientCalendarCard(
                         text = dayName,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isWeekend) resolvedColor.copy(alpha = 0.70f) else Color.White.copy(alpha = 0.45f),
+                        color = if (isWeekend || calendarFullColor) resolvedColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.45f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.weight(1f)
                     )
@@ -575,6 +578,7 @@ fun AmbientCalendarCard(
                                     style = resolvedStyle,
                                     accentColor = resolvedColor,
                                     isCompact = true,
+                                    fullColor = calendarFullColor,
                                     onClick = { onDayClick(currentYear, currentMonth, dayNum) },
                                     modifier = Modifier.weight(1f)
                                 )
