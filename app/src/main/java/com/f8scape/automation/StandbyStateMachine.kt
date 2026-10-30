@@ -99,10 +99,15 @@ class StandbyStateMachine(
             }
 
             StandbyMode.ACTIVE_DASHBOARD -> {
-                // Exit triggers: device picked up, fold changed to FLAT or CLOSED, or cover screen turned off
-                if (!isTent || !isCoverActive || postureData.stabilityConfidence < 0.35f) {
+                // Exit triggers: device picked up (stability < 0.55), fold changed, or orientation lost
+                if (!isTent || !isCoverActive || postureData.stabilityConfidence < 0.55f) {
                     lastExitTimeMs = currentTimeMs
-                    transitionTo(StandbyMode.EXITING, "Exiting tent posture", Action.DismissCoverDashboard)
+                    val exitReason = when {
+                        !isCoverActive -> "Cover screen inactive"
+                        !isTent -> "Fold posture changed (${postureData.posture.name})"
+                        else -> "Movement/pickup detected (confidence=${"%.2f".format(postureData.stabilityConfidence)})"
+                    }
+                    transitionTo(StandbyMode.EXITING, exitReason, Action.DismissCoverDashboard)
                     return Action.DismissCoverDashboard
                 }
             }

@@ -59,19 +59,35 @@ class DiagnosticsViewModel(
     }
 
     private fun startPostureObservation() {
+        val coordinator = (getApplication<Application>() as? com.f8scape.F8scapeApplication)?.automationCoordinator
         viewModelScope.launch {
-            sensorSource.observePosture().collect { postureData ->
-                stateMachine.onPostureUpdate(postureData)
-
-                val prev = _reportState.value
-                if (prev != null) {
-                    _reportState.value = prev.copy(
-                        currentPosture = postureData.posture,
-                        stabilityScore = postureData.stabilityConfidence,
-                        liveHingeAngleDeg = postureData.hingeAngleDeg,
-                        isCoverScreenActive = postureData.isCoverScreenActive,
-                        recentLogs = F8Log.getEntries().takeLast(30).map { it.formatted() }
-                    )
+            if (coordinator != null) {
+                coordinator.livePosture.collect { postureData ->
+                    if (postureData == null) return@collect
+                    val prev = _reportState.value
+                    if (prev != null) {
+                        _reportState.value = prev.copy(
+                            currentPosture = postureData.posture,
+                            stabilityScore = postureData.stabilityConfidence,
+                            liveHingeAngleDeg = postureData.hingeAngleDeg,
+                            isCoverScreenActive = postureData.isCoverScreenActive,
+                            recentLogs = F8Log.getEntries().takeLast(30).map { it.formatted() }
+                        )
+                    }
+                }
+            } else {
+                sensorSource.observePosture().collect { postureData ->
+                    stateMachine.onPostureUpdate(postureData)
+                    val prev = _reportState.value
+                    if (prev != null) {
+                        _reportState.value = prev.copy(
+                            currentPosture = postureData.posture,
+                            stabilityScore = postureData.stabilityConfidence,
+                            liveHingeAngleDeg = postureData.hingeAngleDeg,
+                            isCoverScreenActive = postureData.isCoverScreenActive,
+                            recentLogs = F8Log.getEntries().takeLast(30).map { it.formatted() }
+                        )
+                    }
                 }
             }
         }

@@ -89,16 +89,38 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
 
                 // Fullscreen immersive: completely hide status and navigation bars
                 composeView.fitsSystemWindows = false
-                @Suppress("DEPRECATION")
-                composeView.systemUiVisibility = (
-                    View.SYSTEM_UI_FLAG_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LOW_PROFILE
-                )
+                composeView.isFocusable = true
+                composeView.isFocusableInTouchMode = true
+                composeView.setOnKeyListener { _, keyCode, event ->
+                    if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+                        removeStandbyOverlay()
+                        true
+                    } else {
+                        false
+                    }
+                }
+
+                composeView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                    override fun onViewAttachedToWindow(v: View) {
+                        @Suppress("DEPRECATION")
+                        v.systemUiVisibility = (
+                            View.SYSTEM_UI_FLAG_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        )
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            v.windowInsetsController?.let { controller ->
+                                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                            }
+                        }
+                    }
+
+                    override fun onViewDetachedFromWindow(v: View) {}
+                })
 
                 val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
@@ -111,14 +133,13 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                     WindowManager.LayoutParams.MATCH_PARENT,
                     WindowManager.LayoutParams.MATCH_PARENT,
                     layoutType,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                             WindowManager.LayoutParams.FLAG_FULLSCREEN or
                             WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
-                    PixelFormat.TRANSLUCENT
+                    PixelFormat.OPAQUE
                 ).apply {
-                    gravity = Gravity.CENTER
+                    gravity = Gravity.FILL
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
                     }
@@ -126,13 +147,6 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
 
                 windowManager?.addView(composeView, params)
                 overlayView = composeView
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    composeView.windowInsetsController?.let { controller ->
-                        controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                        controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                    }
-                }
 
                 F8Log.i("CoverOverlayService", "Presented full-screen Standby overlay with status bar hidden")
             } catch (e: Exception) {

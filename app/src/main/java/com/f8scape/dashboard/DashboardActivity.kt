@@ -89,9 +89,9 @@ class DashboardActivity : ComponentActivity() {
     private fun startPostureExitObservation() {
         lifecycleScope.launch {
             sensorPostureSource.observePosture().collect { postureData ->
-                // Exit condition: picked up (stability < 0.35) or posture folded flat / closed
-                val isNotTent = postureData.posture == FoldPosture.FLAT || postureData.posture == FoldPosture.CLOSED
-                val isMoving = postureData.stabilityConfidence < 0.35f
+                // Exit condition: picked up (stability < 0.55) or posture folded flat, closed, portrait, etc.
+                val isNotTent = postureData.posture != FoldPosture.TENT_CANDIDATE
+                val isMoving = postureData.stabilityConfidence < 0.55f
 
                 if (isNotTent || isMoving) {
                     F8Log.i("DashboardActivity", "Exit trigger detected (posture=${postureData.posture}, stability=${postureData.stabilityConfidence})")

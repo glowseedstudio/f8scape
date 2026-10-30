@@ -37,10 +37,21 @@ object F8Log {
     }
 
     private fun log(level: LogEntry.Level, tag: String, message: String) {
+        val redactedMsg = redact(message)
+        try {
+            when (level) {
+                LogEntry.Level.DEBUG -> android.util.Log.d(tag, redactedMsg)
+                LogEntry.Level.INFO -> android.util.Log.i(tag, redactedMsg)
+                LogEntry.Level.WARN -> android.util.Log.w(tag, redactedMsg)
+                LogEntry.Level.ERROR -> android.util.Log.e(tag, redactedMsg)
+            }
+        } catch (_: Exception) {
+            // JVM unit test environment where android.util.Log is not mocked
+        }
         val entry = LogEntry(
             timestampMs = System.currentTimeMillis(),
             tag = tag,
-            message = redact(message),
+            message = redactedMsg,
             level = level
         )
         entries.add(entry)

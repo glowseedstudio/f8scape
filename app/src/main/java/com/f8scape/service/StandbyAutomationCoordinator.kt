@@ -9,6 +9,9 @@ import com.f8scape.fold.FoldPosture
 import com.f8scape.fold.SensorPostureSource
 import com.f8scape.util.F8Log
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 
 class StandbyAutomationCoordinator(
@@ -19,6 +22,9 @@ class StandbyAutomationCoordinator(
     private val screenRepo = ScreenStateRepository(context)
     private val preferencesRepo = PreferencesRepository(context)
     val stateMachine = StandbyStateMachine()
+
+    private val _livePosture = kotlinx.coroutines.flow.MutableStateFlow<com.f8scape.fold.PostureData?>(null)
+    val livePosture: kotlinx.coroutines.flow.StateFlow<com.f8scape.fold.PostureData?> = _livePosture.asStateFlow()
 
     private var observationJob: Job? = null
     private var dwellTimerJob: Job? = null
@@ -38,6 +44,7 @@ class StandbyAutomationCoordinator(
             // Collect sensor posture stream
             launch {
                 sensorSource.observePosture().collect { postureData ->
+                    _livePosture.value = postureData
                     val action = stateMachine.onPostureUpdate(postureData)
                     handleAction(action)
                 }
