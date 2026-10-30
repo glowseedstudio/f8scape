@@ -11,7 +11,7 @@
     <!-- Optional permissions for weather updates and local calendar card -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
@@ -43,7 +43,7 @@
             android:turnScreenOn="true"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
-            android:theme="@style/Theme.F8scape" />
+            android:theme="@style/Theme.F8scape.Ambient" />
 
         <!-- Optional Accessibility Service for cover screen overlay & state observation -->
         <service

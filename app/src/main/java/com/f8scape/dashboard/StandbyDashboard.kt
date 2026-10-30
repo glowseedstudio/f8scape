@@ -149,9 +149,9 @@ fun StandbyDashboard(
         } else if (activeBackgroundArtwork != null) {
             PureBlack
         } else {
-            // Translucent dark scrim over the live system wallpaper (FLAG_SHOW_WALLPAPER)
-            // 45% black preserves rich OLED contrast for white text while showing wallpaper clearly
-            PureBlack.copy(alpha = 0.45f)
+            // Translucent soft scrim over the live system wallpaper (FLAG_SHOW_WALLPAPER)
+            // 20% black keeps the wallpaper rich and vibrant while maintaining high legibility for white numerals
+            PureBlack.copy(alpha = 0.20f)
         }
     }
 
@@ -190,8 +190,8 @@ fun StandbyDashboard(
             isEnabled = preferences.kenBurnsEnabled && activeBackgroundArtwork != null
         )
 
-        // Master window dimming scrim
-        if (preferences.screenDimLevel < 0.8f) {
+        // Master window dimming scrim (active during music playback or when wallpaper is disabled)
+        if (preferences.screenDimLevel < 0.8f && (activeBackgroundArtwork != null || !preferences.showWallpaperBackground)) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

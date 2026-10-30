@@ -426,76 +426,69 @@ fun AmbientCalendarCard(
         onMoveDown = onMoveDown,
         onRemove = onRemove
     ) {
-        Surface(
-            color = Color(0x331C1C1E),
-            shape = RoundedCornerShape(20.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.10f)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.10f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarToday,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier.size(22.dp)
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                if (!hasPermission) {
+                    Text(
+                        text = "Calendar Access",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    if (!hasPermission) {
-                        Text(
-                            text = "Calendar Access",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Grant permission in Settings to show events",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.50f)
-                        )
-                    } else if (upcomingEvent == null) {
-                        Text(
-                            text = "No Upcoming Events",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Your schedule is clear for today",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.60f)
-                        )
-                    } else {
-                        val event = upcomingEvent!!
-                        Text(
-                            text = event.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-                        val formattedTime = if (event.isAllDay) "All day" else "${timeFormat.format(Date(event.startTimeMs))} - ${timeFormat.format(Date(event.endTimeMs))}"
-                        Text(
-                            text = formattedTime,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.70f)
-                        )
-                    }
+                    Text(
+                        text = "Grant permission in Settings to show events",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.50f)
+                    )
+                } else if (upcomingEvent == null) {
+                    Text(
+                        text = "No Upcoming Events",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Your schedule is clear for today",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.60f)
+                    )
+                } else {
+                    val event = upcomingEvent!!
+                    Text(
+                        text = event.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                    val formattedTime = if (event.isAllDay) "All day" else "${timeFormat.format(Date(event.startTimeMs))} - ${timeFormat.format(Date(event.endTimeMs))}"
+                    Text(
+                        text = formattedTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.70f)
+                    )
                 }
             }
         }

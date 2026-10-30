@@ -67,6 +67,7 @@ class DashboardActivity : ComponentActivity() {
             }
             if (prefs.showWallpaperBackground) {
                 window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+                window.setBackgroundDrawableResource(android.R.color.transparent)
             }
             // Window-specific brightness
             window.attributes = window.attributes.apply {

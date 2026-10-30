@@ -54,23 +54,15 @@ fun AmbientMediaCard(
         onMoveDown = onMoveDown,
         onRemove = onRemove
     ) {
-        Surface(
-            color = Color(0x331C1C1E),
-            shape = RoundedCornerShape(20.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(
                     enabled = !isEditMode && onExpandMusic != null,
                     onClick = { onExpandMusic?.invoke() }
-                )
+                ),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
                 if (!isAccessGranted) {
                     // Permission needed hint
                     Row(
@@ -157,10 +149,6 @@ fun AmbientMediaCard(
                                 modifier = Modifier
                                     .size(56.dp)
                                     .clip(RoundedCornerShape(14.dp))
-                                    .border(
-                                        androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                                        RoundedCornerShape(14.dp)
-                                    )
                             )
                         } else {
                             Box(
@@ -288,4 +276,3 @@ fun AmbientMediaCard(
             }
         }
     }
-}
