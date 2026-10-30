@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Stylized F8 tent fold motif -->
+    <path
+        android:fillColor="#8AB4F8"
+        android:pathData="M32,36 L54,24 L76,36 L76,72 L54,84 L32,72 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,24 L54,84"
+        android:strokeColor="#121212"
+        android:strokeWidth="3" />
+</vector>

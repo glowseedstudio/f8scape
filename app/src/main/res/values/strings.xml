@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">F8scape</string>
+    <string name="accessibility_service_description">Optional accessibility service enabling F8scape to detect fold posture transitions and present the ambient standby dashboard on the Fold 8 cover screen.</string>
+</resources>
