@@ -229,14 +229,14 @@ private fun StackedBoldClock(
             fontSize = mainFontSize,
             fontWeight = FontWeight.Black,
             letterSpacing = (-3.0).sp,
-            color = Color.White
+            color = accentColor
         )
         Text(
             text = String.format(Locale.US, "%02d", minute),
             fontSize = mainFontSize,
             fontWeight = FontWeight.Black,
             letterSpacing = (-3.0).sp,
-            color = accentColor
+            color = accentColor.copy(alpha = 0.78f)
         )
         Column(
             verticalArrangement = Arrangement.Center,
@@ -254,7 +254,7 @@ private fun StackedBoldClock(
                 fontSize = if (isFullScreen) 18.sp else 13.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = FontFamily.Monospace,
-                color = Color.White.copy(alpha = 0.65f)
+                color = accentColor.copy(alpha = 0.65f)
             )
         }
     }
@@ -339,6 +339,11 @@ fun LiveClockEditorPanel(
             .clip(RoundedCornerShape(24.dp))
             .background(Color(0xFF141418).copy(alpha = 0.96f))
             .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -376,23 +381,23 @@ fun LiveClockEditorPanel(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(ClockStyle.entries) { style ->
+            items(ClockStyle.entries, key = { it.id }) { style ->
                 val isSelected = style == selectedStyle
                 Surface(
                     onClick = { onSelectStyle(style) },
                     shape = RoundedCornerShape(14.dp),
-                    color = if (isSelected) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.05f),
+                    color = if (isSelected) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
                     border = BorderStroke(
                         width = if (isSelected) 1.5.dp else 1.dp,
-                        color = if (isSelected) selectedColor.color else Color.White.copy(alpha = 0.10f)
+                        color = if (isSelected) selectedColor.color else Color.White.copy(alpha = 0.12f)
                     )
                 ) {
                     Text(
                         text = style.displayName,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f),
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.70f),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp)
                     )
                 }
             }
@@ -406,28 +411,27 @@ fun LiveClockEditorPanel(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            items(ClockColorOption.entries) { option ->
+            items(ClockColorOption.entries, key = { it.id }) { option ->
                 val isSelected = option == selectedColor
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(option.color)
-                        .border(
-                            width = if (isSelected) 2.5.dp else 1.dp,
-                            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.25f),
-                            shape = CircleShape
-                        )
-                        .clickable { onSelectColor(option) },
-                    contentAlignment = Alignment.Center
+                Surface(
+                    onClick = { onSelectColor(option) },
+                    shape = CircleShape,
+                    color = option.color,
+                    border = BorderStroke(
+                        width = if (isSelected) 2.5.dp else 1.dp,
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.25f)
+                    ),
+                    modifier = Modifier.size(38.dp)
                 ) {
-                    if (isSelected) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = option.displayName,
-                            tint = if (option == ClockColorOption.PURE_WHITE || option.isPastel) Color.Black else Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
+                    Box(contentAlignment = Alignment.Center) {
+                        if (isSelected) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = option.displayName,
+                                tint = if (option == ClockColorOption.PURE_WHITE || option.isPastel) Color.Black else Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }

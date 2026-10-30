@@ -132,6 +132,8 @@ fun StandbyDashboard(
         )
     }
     var localCards by remember(currentCards) { mutableStateOf(currentCards) }
+    var localClockStyle by remember(preferences.clockStyle) { mutableStateOf(preferences.clockStyle) }
+    var localClockColorId by remember(preferences.clockColorId) { mutableStateOf(preferences.clockColorId) }
 
     // Periodic second/minute tick
     LaunchedEffect(Unit) {
@@ -382,15 +384,17 @@ fun StandbyDashboard(
                                             weatherCity = preferences.weatherCity,
                                             showWeather = preferences.showWeather,
                                             showBattery = preferences.showBattery,
-                                            clockStyleId = preferences.clockStyle,
-                                            clockColorId = preferences.clockColorId,
+                                            clockStyleId = localClockStyle,
+                                            clockColorId = localClockColorId,
                                             isClockEditorOpen = isClockEditorOpen,
                                             onOpenClockEditor = { isClockEditorOpen = true },
                                             onCloseClockEditor = { isClockEditorOpen = false },
                                             onSelectClockStyle = { style ->
+                                                localClockStyle = style.id
                                                 coroutineScope.launch { preferencesRepo.setClockStyle(style.id) }
                                             },
                                             onSelectClockColor = { color ->
+                                                localClockColorId = color.id
                                                 coroutineScope.launch { preferencesRepo.setClockColorId(color.id) }
                                             },
                                             onDoubleTap = onDismissRequest,
@@ -458,8 +462,8 @@ fun StandbyDashboard(
                                 weatherCity = preferences.weatherCity,
                                 showWeather = preferences.showWeather,
                                 showBattery = preferences.showBattery,
-                                clockStyleId = preferences.clockStyle,
-                                clockColorId = preferences.clockColorId,
+                                clockStyleId = localClockStyle,
+                                clockColorId = localClockColorId,
                                 maskCalendar = preferences.calendarMaskLocked,
                                 isEditMode = isEditMode,
                                 onEnterEditMode = { isEditMode = true },
@@ -514,13 +518,13 @@ fun StandbyDashboard(
             }
         }
 
-        // Invisible gesture zone on the left edge for vertical drag brightness control on all screens
-        if (!isEditMode) {
+        // Narrow left-edge gesture strip for vertical drag brightness control (disabled when editing)
+        if (!isEditMode && !isClockEditorOpen) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .fillMaxHeight()
-                    .width(220.dp)
+                    .width(64.dp)
                     .padding(top = 64.dp, bottom = 48.dp)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(

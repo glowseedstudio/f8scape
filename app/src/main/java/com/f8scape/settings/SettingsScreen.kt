@@ -314,8 +314,10 @@ fun SettingsScreen(
 
             // Clock Studio & Styles Section (100% synced with Dashboard & Big Clock View)
             item {
-                val activeClockStyle = remember(preferences.clockStyle) { ClockStyle.fromId(preferences.clockStyle) }
-                val activeClockColor = remember(preferences.clockColorId) { ClockColorOption.fromId(preferences.clockColorId) }
+                var localStyleId by remember(preferences.clockStyle) { mutableStateOf(preferences.clockStyle) }
+                var localColorId by remember(preferences.clockColorId) { mutableStateOf(preferences.clockColorId) }
+                val activeClockStyle = remember(localStyleId) { ClockStyle.fromId(localStyleId) }
+                val activeClockColor = remember(localColorId) { ClockColorOption.fromId(localColorId) }
                 var previewTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
                 LaunchedEffect(Unit) {
                     while (true) {
@@ -361,10 +363,11 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(ClockStyle.entries) { style ->
+                        items(ClockStyle.entries, key = { it.id }) { style ->
                             val isSelected = style == activeClockStyle
                             Surface(
                                 onClick = {
+                                    localStyleId = style.id
                                     coroutineScope.launch { preferencesRepository.setClockStyle(style.id) }
                                 },
                                 shape = RoundedCornerShape(16.dp),
@@ -400,30 +403,30 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        items(ClockColorOption.entries) { option ->
+                        items(ClockColorOption.entries, key = { it.id }) { option ->
                             val isSelected = option == activeClockColor
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .clip(CircleShape)
-                                    .background(option.color)
-                                    .border(
-                                        width = if (isSelected) 2.5.dp else 1.dp,
-                                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.25f),
-                                        shape = CircleShape
-                                    )
-                                    .clickable {
-                                        coroutineScope.launch { preferencesRepository.setClockColorId(option.id) }
-                                    },
-                                contentAlignment = Alignment.Center
+                            Surface(
+                                onClick = {
+                                    localColorId = option.id
+                                    coroutineScope.launch { preferencesRepository.setClockColorId(option.id) }
+                                },
+                                shape = CircleShape,
+                                color = option.color,
+                                border = BorderStroke(
+                                    width = if (isSelected) 2.5.dp else 1.dp,
+                                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.25f)
+                                ),
+                                modifier = Modifier.size(38.dp)
                             ) {
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = option.displayName,
-                                        tint = if (option == ClockColorOption.PURE_WHITE || option.isPastel) Color.Black else Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = option.displayName,
+                                            tint = if (option == ClockColorOption.PURE_WHITE || option.isPastel) Color.Black else Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             }
                         }

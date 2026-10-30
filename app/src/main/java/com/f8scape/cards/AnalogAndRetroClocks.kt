@@ -72,9 +72,9 @@ fun HorologyAnalogClock(
             val tickColor = when {
                 isCurrentSecond -> accentColor
                 isCardinal -> accentColor
-                isHourMark -> Color.White.copy(alpha = 0.85f)
+                isHourMark -> accentColor.copy(alpha = 0.85f)
                 isPassedSecond -> accentColor.copy(alpha = 0.45f)
-                else -> Color.White.copy(alpha = 0.20f)
+                else -> accentColor.copy(alpha = 0.22f)
             }
 
             val strokeW = when {
@@ -102,11 +102,11 @@ fun HorologyAnalogClock(
             )
         }
 
-        // 2. Draw 12, 3, 6, 9 numerals
+        // 2. Draw 12, 3, 6, 9 numerals in the selected accentColor
         val numeralRadius = radius * 0.69f
         val fontSizePx = radius * 0.21f
         textPaint.textSize = fontSizePx
-        textPaint.color = Color.White.toArgb()
+        textPaint.color = accentColor.toArgb()
         val fontMetrics = textPaint.fontMetrics
         val textCenterOffset = (fontMetrics.descent + fontMetrics.ascent) / 2f
 
@@ -122,7 +122,7 @@ fun HorologyAnalogClock(
         val hourAngleRad = Math.toRadians(((hours + minutes / 60.0) * 30.0) - 90.0)
         val hourLength = radius * 0.50f
         drawLine(
-            color = Color.White,
+            color = accentColor,
             start = center,
             end = Offset(
                 center.x + (hourLength * cos(hourAngleRad)).toFloat(),
@@ -136,7 +136,7 @@ fun HorologyAnalogClock(
         val minuteAngleRad = Math.toRadians(((minutes + seconds / 60.0) * 6.0) - 90.0)
         val minuteLength = radius * 0.74f
         drawLine(
-            color = Color.White,
+            color = accentColor.copy(alpha = 0.90f),
             start = center,
             end = Offset(
                 center.x + (minuteLength * cos(minuteAngleRad)).toFloat(),
