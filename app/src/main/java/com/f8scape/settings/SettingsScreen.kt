@@ -457,8 +457,8 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Photo Motion", style = MaterialTheme.typography.bodyLarge, color = Color.White)
-                            Text("Subtle ambient pan and zoom. Automatically suspended when in Eco profile or Battery Saver mode", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Text("Ken Burns Motion", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Soft ambient pan and zoom. Automatically suspended in Eco profile or Battery Saver mode", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         }
                         Switch(
                             checked = preferences.photoFrameMotion,

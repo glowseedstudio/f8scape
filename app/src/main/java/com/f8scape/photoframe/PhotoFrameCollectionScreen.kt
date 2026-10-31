@@ -313,6 +313,36 @@ fun PhotoFrameCollectionScreen(
                         )
                     }
 
+                    // Ken Burns Motion toggle (soft, gentle zoom & pan)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                            Column {
+                                Text("Ken Burns Motion", fontSize = 14.sp, color = Color.White)
+                                Text("Soft ambient zoom & pan", fontSize = 11.sp, color = TextTertiary)
+                            }
+                        }
+                        Switch(
+                            checked = preferences.photoFrameMotion,
+                            onCheckedChange = { motion ->
+                                coroutineScope.launch { preferencesRepository.setPhotoFrameMotion(motion) }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = SamsungBlue,
+                                uncheckedThumbColor = Color.White.copy(alpha = 0.6f),
+                                uncheckedTrackColor = Color.White.copy(alpha = 0.15f)
+                            )
+                        )
+                    }
+
                     if (resolvedUris.isNotEmpty()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),

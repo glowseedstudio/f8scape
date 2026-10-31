@@ -129,28 +129,48 @@ fun PhotoFrameView(
 
     val slideshowState by slideshowController.state.collectAsState()
 
-    // 900ms subtle crossfade between outgoing and incoming photograph
-    val crossfadeProgress = remember { Animatable(1f) }
-    LaunchedEffect(slideshowState.transitionTrigger) {
-        if (slideshowState.transitionTrigger > 0L) {
-            crossfadeProgress.snapTo(0f)
-            crossfadeProgress.animateTo(
+    // Smooth, seamless crossfade state avoiding black background flashes
+    var activeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var incomingBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val crossfadeAlpha = remember { Animatable(1f) }
+
+    LaunchedEffect(slideshowState.currentBitmap) {
+        val target = slideshowState.currentBitmap ?: return@LaunchedEffect
+        if (activeBitmap == null) {
+            // First image: display immediately without flash
+            activeBitmap = target
+            crossfadeAlpha.snapTo(1f)
+        } else if (activeBitmap != target) {
+            // Smoothly crossfade incoming image over solid base image
+            incomingBitmap = target
+            crossfadeAlpha.snapTo(0f)
+            crossfadeAlpha.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 900, easing = LinearEasing)
+                animationSpec = tween(durationMillis = 1000, easing = LinearEasing)
             )
+            activeBitmap = target
+            incomingBitmap = null
+            crossfadeAlpha.snapTo(1f)
         }
     }
 
-    // Optional Ken Burns Photo Motion (disabled in Eco mode or when preference is off)
+    LaunchedEffect(slideshowState.isEmpty, resolvedUris.isEmpty()) {
+        if (slideshowState.isEmpty || resolvedUris.isEmpty()) {
+            activeBitmap = null
+            incomingBitmap = null
+        }
+    }
+
+    // Soft, cinematic Ken Burns Photo Motion (disabled in Eco mode or when preference is off)
     val isMotionEnabled = preferences.photoFrameMotion && !isEcoModeActive && !slideshowState.isEmpty
     val infiniteTransition = rememberInfiniteTransition(label = "PhotoMotionTransition")
 
     val motionScale by if (isMotionEnabled) {
         infiniteTransition.animateFloat(
-            initialValue = 1.03f,
-            targetValue = 1.12f,
+            initialValue = 1.06f,
+            targetValue = 1.20f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 32000, easing = LinearEasing),
+                animation = tween(durationMillis = 24000, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "PhotoMotionScale"
@@ -161,10 +181,10 @@ fun PhotoFrameView(
 
     val motionTranslationX by if (isMotionEnabled) {
         infiniteTransition.animateFloat(
-            initialValue = -20f,
-            targetValue = 20f,
+            initialValue = -55f,
+            targetValue = 55f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 36000, easing = LinearEasing),
+                animation = tween(durationMillis = 28000, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "PhotoMotionTranslationX"
@@ -175,10 +195,10 @@ fun PhotoFrameView(
 
     val motionTranslationY by if (isMotionEnabled) {
         infiniteTransition.animateFloat(
-            initialValue = -12f,
-            targetValue = 12f,
+            initialValue = -32f,
+            targetValue = 32f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 28000, easing = LinearEasing),
+                animation = tween(durationMillis = 22000, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "PhotoMotionTranslationY"
@@ -272,34 +292,19 @@ fun PhotoFrameView(
         }
 
         // --- 3. ACTIVE PHOTOGRAPH RENDERING ---
-        val previousBmp = slideshowState.previousBitmap
-        val currentBmp = slideshowState.currentBitmap
-        val progress = crossfadeProgress.value
+        val base = activeBitmap
+        val incoming = incomingBitmap
+        val alpha = crossfadeAlpha.value
 
-        // Outgoing previous bitmap during crossfade
-        if (previousBmp != null && progress < 0.999f) {
+        // Base photograph: solid underneath at 100% opacity so black background never shows through
+        if (base != null) {
             Image(
-                bitmap = previousBmp.asImageBitmap(),
+                bitmap = base.asImageBitmap(),
                 contentDescription = null,
                 contentScale = contentScale,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        alpha = 1f - progress
-                    }
-            )
-        }
-
-        // Incoming / current bitmap
-        if (currentBmp != null) {
-            Image(
-                bitmap = currentBmp.asImageBitmap(),
-                contentDescription = "Ambient Photograph",
-                contentScale = contentScale,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = if (previousBmp != null) progress else 1f
                         if (isMotionEnabled) {
                             scaleX = motionScale
                             scaleY = motionScale
@@ -308,7 +313,27 @@ fun PhotoFrameView(
                         }
                     }
             )
-        } else if (slideshowState.isLoading) {
+        }
+
+        // Incoming photograph: smoothly fades in on top
+        if (incoming != null && alpha > 0f) {
+            Image(
+                bitmap = incoming.asImageBitmap(),
+                contentDescription = "Ambient Photograph",
+                contentScale = contentScale,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        this.alpha = alpha
+                        if (isMotionEnabled) {
+                            scaleX = motionScale
+                            scaleY = motionScale
+                            translationX = motionTranslationX
+                            translationY = motionTranslationY
+                        }
+                    }
+            )
+        } else if (slideshowState.isLoading && base == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
