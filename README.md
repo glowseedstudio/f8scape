@@ -33,16 +33,24 @@ Swipe easily between views with fluid, premium physical transitions. When restin
 - **Full-Screen Calendar:** Full-month schedule with 5 distinct layouts (*Default*, *Agenda Split*, *Minimal Dot*, *Editorial Bold*, and *Bento Boxed*) and single-day event timelines.
 - **Full-Screen Media Player:** Displays currently playing music or podcasts with full album art, an animated progress scrubber, playback controls, and a **top-edge swipe gesture** to adjust volume smoothly.
 
-### 3. Ambient Status Bar Notification Icons
+### 3. Ambient Photo Frame
+Transform your Galaxy Z Fold 8 into a dedicated digital photo frame when propped horizontally:
+- **Zero Broad Storage Permissions:** Uses Android’s modern system Photo Picker and Storage Access Framework (SAF) to select specific photos or folders. No broad storage or media permissions required.
+- **Lifecycle-Aware Slideshow:** Seamless 900ms crossfade transitions between photos, customizable intervals (30s, 1m, 2m, 5m, 15m), and intelligent shuffle mode that avoids immediate repeats.
+- **Customizable Overlays:** Choose between clean **Immersive** photos, or overlay an ambient **Clock** or **Calendar** in any corner (Top-Left, Top-Right, Bottom-Left, or Bottom-Right).
+- **Lock-Screen Privacy Shield:** By default, personal photos are shielded with a calm ambient gradient when your device is locked, keeping your private memories secure.
+- **Subtle Photo Motion & Battery Care:** Optional slow Ken Burns pan and zoom that smoothly pauses when settled or when Eco/Battery Saver mode is active. Memory-bounded decoding prevents battery drain and overheating.
+
+### 4. Ambient Status Bar Notification Icons
 - Discrete monochrome status bar silhouette icons appear right above your clock on the dashboard, and at the bottom of the full-screen clock view.
 - Provides a quiet, glanceable reminder for unread notifications from apps like Messages, WhatsApp, and Mail without displaying noisy popups, banners, or private message text.
 
-### 4. Touch-and-Hold Live Studios
+### 5. Touch-and-Hold Live Studios
 - **Long-press the Clock** to open the **Clock Studio** and customize styles, accent colors, and choose between subtle `Highlights` or bold `Full Colour`.
 - **Long-press the Calendar** to open the **Calendar Studio** and customize layouts, highlights, and accent colors.
 - **Swipe up/down along the left screen edge** on any StandBy view to adjust screen brightness on the fly.
 
-### 5. OLED Care & Power Saving
+### 6. OLED Care & Power Saving
 - **Burn-In Protection:** Subtle pixel-shifting prevents static pixel fatigue during overnight docking.
 - **Eco Mode:** Automatically drops to pure black OLED pixels with reduced sensor polling when Battery Saver is active.
 - **Auto-Off Timer:** Option to turn the display off after 15, 30, or 60 minutes, or stay on continuously while docked.
@@ -58,6 +66,7 @@ We believe in complete transparency. F8scape only requests permissions that dire
 | :--- | :--- | :--- |
 | **Accessibility Service** *(Required)* | Allows Android to detect when the phone is propped in tent mode and show the StandBy display over the cover screen without having to unlock the phone first. | F8scape cannot see your passwords, text you type, or content from other apps. It is strictly used to monitor hinge posture and host the ambient display. |
 | **Appear on Top** *(Required)* | Lets F8scape draw the dark StandBy screen on top of your cover display when tented. | Used purely to render the visual StandBy screen. |
+| **Photo Access** *(Zero Extra Permissions)* | Uses Android’s official system Photo Picker and Storage Access Framework. | You select only the exact photos or folder you want to display. F8scape never requests broad media/file access and never uploads any images. |
 | **Notification Access** *(Optional)* | Detects active media playback (Spotify, YouTube Music, Apple Music, podcasts, etc.) to show album art and controls, and displays subtle status bar notification silhouette icons. | Personal notification text and messages are never read, stored, or sent anywhere. |
 | **Calendar** *(Optional)* | Displays event dots and your next upcoming appointments on the calendar card. | Read locally on-device. Your calendar schedule never leaves your phone. |
 | **Wallpaper / Media** *(Optional)* | Extracts your current home wallpaper so it can be shown as a subtle, ambient background behind the clock. | Used only to display your background locally. |
@@ -68,10 +77,10 @@ We believe in complete transparency. F8scape only requests permissions that dire
 
 ## 📦 Download & Installation
 
-1. Grab the latest release APK (`F8scape-v1.0.3.apk`) from the [**Releases**](../../releases) page on your Galaxy Z Fold 8.
+1. Grab the latest release APK (`F8scape-v1.1.0.apk`) from the [**Releases**](../../releases) page on your Galaxy Z Fold 8.
 2. Tap the APK to install it.
 3. Open **F8scape** and follow the quick 2-step setup (**Accessibility Service** and **Appear on Top**).
-4. *(Optional)* Turn on **Music & Media Controls**, **Calendar**, or your **Weather City & Unit** from the Home tab.
+4. Select your preferred StandBy preset (**Dashboard**, **Minimal**, **Media**, or **Photo Frame**) in Settings.
 5. Prop your Fold 8 into **tent position** (`~90°`) on your desk or nightstand.
 
 ### Built-in In-App Updates

@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,7 +55,9 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     preferencesRepository: PreferencesRepository,
     onNavigateBack: (() -> Unit)? = null,
-    onOpenDiagnostics: () -> Unit = {}
+    onOpenDiagnostics: () -> Unit = {},
+    onOpenPhotoCollection: () -> Unit = {},
+    onPreviewPhotoFrame: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -215,7 +217,7 @@ fun SettingsScreen(
                 SectionCard(title = "Dashboard Preset") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         PresetChip(
                             label = "Dashboard",
@@ -235,6 +237,399 @@ fun SettingsScreen(
                             onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Media") } },
                             modifier = Modifier.weight(1f)
                         )
+                        PresetChip(
+                            label = "Photo Frame",
+                            isSelected = preferences.activePreset == "Photo Frame",
+                            onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Photo Frame") } },
+                            modifier = Modifier.weight(1.15f)
+                        )
+                    }
+                }
+            }
+
+            // Ambient Photo Frame Configuration Section
+            item {
+                SectionCard(title = "Ambient Photo Frame") {
+                    val isPhotoFrameActive = preferences.activePreset == "Photo Frame"
+
+                    // Quick Collection Manager shortcut card
+                    Surface(
+                        onClick = onOpenPhotoCollection,
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFF222226),
+                        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(SamsungBlue.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PhotoLibrary,
+                                        contentDescription = null,
+                                        tint = SamsungBlue,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Column {
+                                    Text("Manage Photos & Folders", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                    val countText = if (preferences.photoFrameSourceType == "FOLDER") {
+                                        "Storage Access Framework Folder"
+                                    } else {
+                                        val count = preferences.photoFrameSelectedUrisSerialized.split("\n").filter { it.isNotBlank() }.size
+                                        "$count selected photo(s)"
+                                    }
+                                    Text(countText, fontSize = 12.sp, color = TextSecondary)
+                                }
+                            }
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Open", tint = TextTertiary, modifier = Modifier.size(18.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Preset Toggle Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Set as Active StandBy Preset", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Display photo slideshow automatically when in tent posture", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = isPhotoFrameActive,
+                            onCheckedChange = { active ->
+                                coroutineScope.launch {
+                                    preferencesRepository.setActivePreset(if (active) "Photo Frame" else "Dashboard")
+                                }
+                            },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // Photo Source Selector
+                    Text("Photo Source", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text("Choose between individual selected photographs or a dedicated folder", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("PHOTOS" to "Selected Photos", "FOLDER" to "Selected Folder").forEach { (sourceId, label) ->
+                            val isSelected = preferences.photoFrameSourceType == sourceId
+                            Surface(
+                                onClick = {
+                                    coroutineScope.launch { preferencesRepository.setPhotoFrameSourceType(sourceId) }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = Color.White,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 9.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // Slideshow Interval Selector
+                    Text("Slideshow Interval", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text("Duration each photo remains visible before advancing", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val intervals = listOf(
+                        30 to "30s",
+                        60 to "1m",
+                        120 to "2m",
+                        300 to "5m",
+                        900 to "15m"
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        intervals.forEach { (sec, label) ->
+                            val isSelected = preferences.photoFrameIntervalSeconds == sec
+                            Surface(
+                                onClick = {
+                                    coroutineScope.launch { preferencesRepository.setPhotoFrameIntervalSeconds(sec) }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // Shuffle Playback Switch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Shuffle Photos", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Randomizes photo order, strictly avoiding immediate repeats", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.photoFrameShuffle,
+                            onCheckedChange = { shuffle ->
+                                coroutineScope.launch { preferencesRepository.setPhotoFrameShuffle(shuffle) }
+                            },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // Scaling / Display Mode (Crop to Fill vs Fit)
+                    Text("Display Mode", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text("Crop-to-fill covers the screen edge-to-edge; Fit shows the complete photograph", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("CROP" to "Crop to Fill", "FIT" to "Fit (Whole Photo)").forEach { (modeId, label) ->
+                            val isSelected = preferences.photoFrameFitMode == modeId
+                            Surface(
+                                onClick = {
+                                    coroutineScope.launch { preferencesRepository.setPhotoFrameFitMode(modeId) }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = Color.White,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 9.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // Photo Motion (Ken Burns)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Photo Motion", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Subtle ambient pan and zoom. Automatically suspended when in Eco profile or Battery Saver mode", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.photoFrameMotion,
+                            onCheckedChange = { motion ->
+                                coroutineScope.launch { preferencesRepository.setPhotoFrameMotion(motion) }
+                            },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // Overlay Configuration
+                    Text("Overlay Presentation", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text("Select which ambient elements overlay the background photograph", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val overlays = listOf(
+                        "CLOCK_PHOTO" to "Clock + Photo",
+                        "CALENDAR_PHOTO" to "Calendar + Photo",
+                        "IMMERSIVE" to "Immersive"
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        overlays.forEach { (typeId, label) ->
+                            val isSelected = preferences.photoFrameOverlayType == typeId
+                            Surface(
+                                onClick = {
+                                    coroutineScope.launch { preferencesRepository.setPhotoFrameOverlayType(typeId) }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = Color.White,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 9.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Overlay Position
+                    Text("Overlay Position", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text("Screen quadrant to frame the ambient clock or calendar", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val positions = listOf(
+                        "TOP_LEFT" to "Top Left",
+                        "TOP_RIGHT" to "Top Right",
+                        "BOTTOM_LEFT" to "Bottom Left",
+                        "BOTTOM_RIGHT" to "Bottom Right"
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        positions.forEach { (posId, label) ->
+                            val isSelected = preferences.photoFrameOverlayPosition == posId
+                            Surface(
+                                onClick = {
+                                    coroutineScope.launch { preferencesRepository.setPhotoFrameOverlayPosition(posId) }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // Show Photos While Locked (Lock-Screen Privacy)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Show Photos While Locked", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("When disabled (recommended), photos are hidden if the phone is locked, keeping your private memories secure.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = preferences.photoFrameShowWhileLocked,
+                            onCheckedChange = { show ->
+                                coroutineScope.launch { preferencesRepository.setPhotoFrameShowWhileLocked(show) }
+                            },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // When Music Starts
+                    Text("When Music Starts", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text("Choose how Photo Frame behaves when active music playback begins", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("KEEP_PHOTO" to "Keep Photo Frame", "SWITCH_TO_MEDIA" to "Switch to Media").forEach { (behaviorId, label) ->
+                            val isSelected = preferences.photoFrameMusicBehavior == behaviorId
+                            Surface(
+                                onClick = {
+                                    coroutineScope.launch { preferencesRepository.setPhotoFrameMusicBehavior(behaviorId) }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) SamsungBlue else Color(0xFF26262A),
+                                border = if (isSelected) null else BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.padding(vertical = 9.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    // Action buttons: Preview & Reset
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onPreviewPhotoFrame,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF26262A)),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Preview", fontSize = 13.sp, color = Color.White)
+                        }
+
+                        Button(
+                            onClick = {
+                                coroutineScope.launch { preferencesRepository.resetPhotoFrameSettings() }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF26262A)),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Reset", fontSize = 13.sp, color = Color.White)
+                        }
                     }
                 }
             }
@@ -694,6 +1089,29 @@ fun SettingsScreen(
 
                     HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
 
+                    // Weather Intelligence Page Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Weather Intelligence Page", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text(
+                                "Adds a dedicated full-screen weather page with hourly rain forecasts, UV, wind, and 7-day outlook when swiping in full screen mode",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                        Switch(
+                            checked = preferences.enableWeatherPage,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setEnableWeatherPage(it) } },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
                     // Show Battery Toggle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -763,6 +1181,33 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.calendarMaskLocked,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setCalendarMaskLocked(it) } },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    // Interactive Notification Cards View
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Interactive Notification View", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text(
+                                "Touching the notification icons on StandBy opens a split view with the clock on the left and notification cards on the right",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                "Opt-in · Disabled by default for lockscreen privacy",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (preferences.enableNotificationCardsView) StatusSuccess else TextTertiary
+                            )
+                        }
+                        Switch(
+                            checked = preferences.enableNotificationCardsView,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setEnableNotificationCardsView(it) } },
                             colors = defaultSwitchColors
                         )
                     }
@@ -1180,18 +1625,18 @@ private fun PresetChip(
         modifier = modifier
     ) {
         Row(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp),
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             if (isSelected) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = SamsungBlue, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(5.dp))
+                Icon(Icons.Default.Check, contentDescription = null, tint = SamsungBlue, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
             }
             Text(
                 text = label,
                 color = if (isSelected) Color.White else TextSecondary,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
             )
         }

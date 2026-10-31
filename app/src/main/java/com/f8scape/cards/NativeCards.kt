@@ -149,6 +149,8 @@ fun AmbientClockCard(
     isLarge: Boolean = true,
     isEditMode: Boolean = false,
     notificationIcons: List<StatusBarNotificationIcon> = emptyList(),
+    isNotificationInteractive: Boolean = false,
+    onNotificationClick: (() -> Unit)? = null,
     onClockClick: () -> Unit = {},
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
@@ -203,6 +205,8 @@ fun AmbientClockCard(
             if (notificationIcons.isNotEmpty()) {
                 NotificationIconsRow(
                     icons = notificationIcons,
+                    isInteractive = isNotificationInteractive,
+                    onClick = onNotificationClick,
                     modifier = Modifier.padding(bottom = 6.dp)
                 )
             }

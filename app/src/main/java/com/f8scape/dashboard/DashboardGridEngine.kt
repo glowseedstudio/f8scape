@@ -48,6 +48,8 @@ fun DashboardGridEngine(
     maskCalendar: Boolean = false,
     isEditMode: Boolean = false,
     notificationIcons: List<StatusBarNotificationIcon> = emptyList(),
+    isNotificationInteractive: Boolean = false,
+    onNotificationClick: (() -> Unit)? = null,
     onEnterEditMode: () -> Unit = {},
     onUpdateCards: (List<CardItem>) -> Unit = {},
     onDoneEdit: () -> Unit = {},
@@ -181,6 +183,8 @@ fun DashboardGridEngine(
                                 isLarge = true,
                                 isEditMode = isEditMode,
                                 notificationIcons = notificationIcons,
+                                isNotificationInteractive = isNotificationInteractive,
+                                onNotificationClick = onNotificationClick,
                                 onClockClick = { onExpandClock?.invoke() },
                                 onRemove = if (cards.size > 1) {
                                     { onUpdateCards(cards.filter { it.id != clockCard.id }) }
@@ -213,6 +217,8 @@ fun DashboardGridEngine(
                                     maskCalendar = maskCalendar,
                                     isEditMode = isEditMode,
                                     notificationIcons = notificationIcons,
+                                    isNotificationInteractive = isNotificationInteractive,
+                                    onNotificationClick = onNotificationClick,
                                     onMoveUp = if (index > 0) {
                                         {
                                             val mutable = companionCards.toMutableList()
@@ -300,6 +306,8 @@ fun DashboardGridEngine(
                             maskCalendar = maskCalendar,
                             isEditMode = isEditMode,
                             notificationIcons = notificationIcons,
+                            isNotificationInteractive = isNotificationInteractive,
+                            onNotificationClick = onNotificationClick,
                             onMoveUp = if (index > 0) {
                                 {
                                     val mutable = cards.toMutableList()
@@ -471,6 +479,8 @@ private fun RenderCard(
     maskCalendar: Boolean,
     isEditMode: Boolean,
     notificationIcons: List<StatusBarNotificationIcon> = emptyList(),
+    isNotificationInteractive: Boolean = false,
+    onNotificationClick: (() -> Unit)? = null,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
@@ -492,6 +502,8 @@ private fun RenderCard(
             isLarge = false,
             isEditMode = isEditMode,
             notificationIcons = notificationIcons,
+            isNotificationInteractive = isNotificationInteractive,
+            onNotificationClick = onNotificationClick,
             onClockClick = { onExpandClock?.invoke() },
             onMoveUp = onMoveUp,
             onMoveDown = onMoveDown,

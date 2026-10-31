@@ -55,7 +55,8 @@ fun AppHomeScreen(
     preferencesRepository: PreferencesRepository,
     onLaunchPreview: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenSetup: () -> Unit
+    onOpenSetup: () -> Unit,
+    onOpenPhotoCollection: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -518,6 +519,52 @@ fun AppHomeScreen(
                             colors = customSwitchColors
                         )
                     }
+                }
+            }
+        }
+
+        // Optional Enhancement 4: Ambient Photo Frame
+        item {
+            val isPhotoFrameActive = preferences.activePreset == "Photo Frame"
+            val photoCount = preferences.photoFrameSelectedUrisSerialized.split("\n").filter { it.isNotBlank() }.size
+            val statusDesc = if (preferences.photoFrameSourceType == "FOLDER") {
+                "Folder Selected"
+            } else if (photoCount > 0) {
+                "$photoCount photos selected"
+            } else {
+                "No photos selected"
+            }
+
+            OptionalFeatureCard(
+                title = "Ambient Photo Frame",
+                subtitle = "Transform your landscape cover screen into a native, battery-friendly ambient picture frame with crossfades and customizable clock overlays.",
+                icon = Icons.Default.PhotoLibrary,
+                isEnabled = isPhotoFrameActive,
+                statusText = if (isPhotoFrameActive) "Active Preset ($statusDesc)" else "Optional Preset ($statusDesc)",
+                actionButtonLabel = "Manage Photos",
+                onActionClick = onOpenPhotoCollection
+            ) {
+                HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Active StandBy Preset", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Display photo slideshow automatically when placed in tent mode", fontSize = 12.sp, color = TextSecondary)
+                    }
+                    Switch(
+                        checked = isPhotoFrameActive,
+                        onCheckedChange = { active ->
+                            coroutineScope.launch {
+                                preferencesRepository.setActivePreset(if (active) "Photo Frame" else "Dashboard")
+                            }
+                        },
+                        colors = customSwitchColors
+                    )
                 }
             }
         }

@@ -24,4 +24,16 @@ object TimeUtils {
         val seconds = totalSeconds % 60
         return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
     }
+
+    fun formatRelativeTime(timestampMs: Long): String {
+        if (timestampMs <= 0L) return ""
+        val diffMs = (System.currentTimeMillis() - timestampMs).coerceAtLeast(0L)
+        val diffMinutes = diffMs / (60 * 1000)
+        return when {
+            diffMinutes < 1 -> "Just now"
+            diffMinutes < 60 -> "${diffMinutes}m ago"
+            diffMinutes < 1440 -> "${diffMinutes / 60}h ago"
+            else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(timestampMs))
+        }
+    }
 }

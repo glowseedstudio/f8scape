@@ -1,5 +1,6 @@
 package com.f8scape.notifications
 
+import android.app.PendingIntent
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -16,12 +17,21 @@ data class StatusBarNotificationIcon(
     val packageName: String,
     val iconBitmap: Bitmap?,
     val postTime: Long = 0L,
-    val count: Int = 1
+    val count: Int = 1,
+    val appName: String = "",
+    val appIconBitmap: Bitmap? = null,
+    val title: String = "",
+    val text: String = "",
+    val subText: String = "",
+    val contentIntent: PendingIntent? = null
 )
 
 object ActiveNotificationRepository {
     private val _activeNotifications = MutableStateFlow<List<StatusBarNotificationIcon>>(emptyList())
     val activeNotifications: StateFlow<List<StatusBarNotificationIcon>> = _activeNotifications.asStateFlow()
+
+    private val _notificationCards = MutableStateFlow<List<StatusBarNotificationIcon>>(emptyList())
+    val notificationCards: StateFlow<List<StatusBarNotificationIcon>> = _notificationCards.asStateFlow()
 
     private var refreshCallback: (() -> Unit)? = null
 
@@ -38,6 +48,35 @@ object ActiveNotificationRepository {
 
     fun updateNotifications(icons: List<StatusBarNotificationIcon>) {
         _activeNotifications.value = icons
+    }
+
+    fun updateNotificationCards(cards: List<StatusBarNotificationIcon>) {
+        _notificationCards.value = cards
+    }
+
+    fun dismissNotification(key: String) {
+        try {
+            com.f8scape.media.F8MediaNotificationListener.activeInstance?.cancelNotification(key)
+        } catch (e: Exception) {
+            F8Log.e("ActiveNotificationRepo", "Failed to cancel notification $key", e)
+        }
+    }
+
+    /**
+     * Extracts full-color launcher icon for the given application package.
+     */
+    fun extractAppIconBitmap(context: Context, packageName: String): Bitmap? {
+        return try {
+            val drawable = context.packageManager.getApplicationIcon(packageName)
+            val sizePx = 64
+            val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, sizePx, sizePx)
+            drawable.draw(canvas)
+            bitmap
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**

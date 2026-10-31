@@ -43,6 +43,7 @@ import com.f8scape.diagnostics.DiagnosticsScreen
 import com.f8scape.diagnostics.DiagnosticsViewModel
 import com.f8scape.fold.WindowPostureSource
 import com.f8scape.onboarding.FirstOpenSetupScreen
+import com.f8scape.photoframe.PhotoFrameCollectionScreen
 import com.f8scape.service.CoverOverlayService
 import com.f8scape.settings.SettingsScreen
 import com.f8scape.updater.AppUpdateChecker
@@ -160,6 +161,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onOpenSetup = {
                                         navController.navigate(Screen.Onboarding.route)
+                                    },
+                                    onOpenPhotoCollection = {
+                                        navController.navigate(Screen.PhotoCollection.route)
                                     }
                                 )
                             }
@@ -170,6 +174,12 @@ class MainActivity : ComponentActivity() {
                                     onNavigateBack = null,
                                     onOpenDiagnostics = {
                                         navController.navigate(Screen.Diagnostics.route)
+                                    },
+                                    onOpenPhotoCollection = {
+                                        navController.navigate(Screen.PhotoCollection.route)
+                                    },
+                                    onPreviewPhotoFrame = {
+                                        navController.navigate(Screen.StandbyPreview.route)
                                     }
                                 )
                             }
@@ -194,6 +204,18 @@ class MainActivity : ComponentActivity() {
                                 StandbyPreviewScreen(
                                     onDismiss = {
                                         navController.popBackStack()
+                                    }
+                                )
+                            }
+
+                            composable(Screen.PhotoCollection.route) {
+                                PhotoFrameCollectionScreen(
+                                    preferencesRepository = preferencesRepository,
+                                    onNavigateBack = {
+                                        navController.popBackStack()
+                                    },
+                                    onPreviewSlideshow = {
+                                        navController.navigate(Screen.StandbyPreview.route)
                                     }
                                 )
                             }

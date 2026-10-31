@@ -63,4 +63,15 @@ class CardModelTest {
         assertEquals(CardType.CLOCK, layout[0].type)
         assertEquals(CardType.MEDIA, layout[1].type)
     }
+
+    @Test
+    fun photoFrameLayout_containsClockCard() {
+        val layout = DefaultCardLayouts.getPhotoFrameLayout()
+        assertEquals(1, layout.size)
+        assertEquals(CardType.CLOCK, layout[0].type)
+
+        val photoFrameFallback = DefaultCardLayouts.deserialize("", fallbackPreset = "Photo Frame")
+        assertEquals(1, photoFrameFallback.size)
+        assertEquals(CardType.CLOCK, photoFrameFallback[0].type)
+    }
 }

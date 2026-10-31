@@ -40,7 +40,20 @@ data class UserPreferences(
     val autoOffMinutes: Int = 0, // 0 = Never, 15, 30, 60
     val suppressOnCalls: Boolean = true,
     val hasCompletedOnboarding: Boolean = false,
-    val weatherTempUnit: String = "SYSTEM" // SYSTEM, CELSIUS, FAHRENHEIT
+    val weatherTempUnit: String = "SYSTEM", // SYSTEM, CELSIUS, FAHRENHEIT
+    val enableNotificationCardsView: Boolean = false,
+    val enableWeatherPage: Boolean = false,
+    val photoFrameSourceType: String = "PHOTOS", // "PHOTOS" or "FOLDER"
+    val photoFrameSelectedUrisSerialized: String = "",
+    val photoFrameFolderUri: String = "",
+    val photoFrameIntervalSeconds: Int = 60,
+    val photoFrameShuffle: Boolean = true,
+    val photoFrameFitMode: String = "CROP", // "CROP" or "FIT"
+    val photoFrameMotion: Boolean = false,
+    val photoFrameOverlayType: String = "CLOCK_PHOTO", // "IMMERSIVE", "CLOCK_PHOTO", "CALENDAR_PHOTO"
+    val photoFrameOverlayPosition: String = "TOP_LEFT", // "TOP_LEFT", "TOP_RIGHT", "BOTTOM_LEFT", "BOTTOM_RIGHT"
+    val photoFrameShowWhileLocked: Boolean = false,
+    val photoFrameMusicBehavior: String = "KEEP_PHOTO" // "KEEP_PHOTO" or "SWITCH_TO_MEDIA"
 )
 
 class PreferencesRepository(
@@ -75,6 +88,19 @@ class PreferencesRepository(
         val SUPPRESS_ON_CALLS = booleanPreferencesKey("suppress_on_calls")
         val HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
         val WEATHER_TEMP_UNIT = stringPreferencesKey("weather_temp_unit")
+        val ENABLE_NOTIFICATION_CARDS_VIEW = booleanPreferencesKey("enable_notification_cards_view")
+        val ENABLE_WEATHER_PAGE = booleanPreferencesKey("enable_weather_page")
+        val PHOTO_FRAME_SOURCE_TYPE = stringPreferencesKey("photo_frame_source_type")
+        val PHOTO_FRAME_SELECTED_URIS = stringPreferencesKey("photo_frame_selected_uris")
+        val PHOTO_FRAME_FOLDER_URI = stringPreferencesKey("photo_frame_folder_uri")
+        val PHOTO_FRAME_INTERVAL_SECONDS = intPreferencesKey("photo_frame_interval_seconds")
+        val PHOTO_FRAME_SHUFFLE = booleanPreferencesKey("photo_frame_shuffle")
+        val PHOTO_FRAME_FIT_MODE = stringPreferencesKey("photo_frame_fit_mode")
+        val PHOTO_FRAME_MOTION = booleanPreferencesKey("photo_frame_motion")
+        val PHOTO_FRAME_OVERLAY_TYPE = stringPreferencesKey("photo_frame_overlay_type")
+        val PHOTO_FRAME_OVERLAY_POSITION = stringPreferencesKey("photo_frame_overlay_position")
+        val PHOTO_FRAME_SHOW_WHILE_LOCKED = booleanPreferencesKey("photo_frame_show_while_locked")
+        val PHOTO_FRAME_MUSIC_BEHAVIOR = stringPreferencesKey("photo_frame_music_behavior")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -114,7 +140,20 @@ class PreferencesRepository(
                 autoOffMinutes = preferences[PreferencesKeys.AUTO_OFF_MINUTES] ?: 0,
                 suppressOnCalls = preferences[PreferencesKeys.SUPPRESS_ON_CALLS] ?: true,
                 hasCompletedOnboarding = preferences[PreferencesKeys.HAS_COMPLETED_ONBOARDING] ?: false,
-                weatherTempUnit = preferences[PreferencesKeys.WEATHER_TEMP_UNIT] ?: "SYSTEM"
+                weatherTempUnit = preferences[PreferencesKeys.WEATHER_TEMP_UNIT] ?: "SYSTEM",
+                enableNotificationCardsView = preferences[PreferencesKeys.ENABLE_NOTIFICATION_CARDS_VIEW] ?: false,
+                enableWeatherPage = preferences[PreferencesKeys.ENABLE_WEATHER_PAGE] ?: false,
+                photoFrameSourceType = preferences[PreferencesKeys.PHOTO_FRAME_SOURCE_TYPE] ?: "PHOTOS",
+                photoFrameSelectedUrisSerialized = preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] ?: "",
+                photoFrameFolderUri = preferences[PreferencesKeys.PHOTO_FRAME_FOLDER_URI] ?: "",
+                photoFrameIntervalSeconds = preferences[PreferencesKeys.PHOTO_FRAME_INTERVAL_SECONDS] ?: 60,
+                photoFrameShuffle = preferences[PreferencesKeys.PHOTO_FRAME_SHUFFLE] ?: true,
+                photoFrameFitMode = preferences[PreferencesKeys.PHOTO_FRAME_FIT_MODE] ?: "CROP",
+                photoFrameMotion = preferences[PreferencesKeys.PHOTO_FRAME_MOTION] ?: false,
+                photoFrameOverlayType = preferences[PreferencesKeys.PHOTO_FRAME_OVERLAY_TYPE] ?: "CLOCK_PHOTO",
+                photoFrameOverlayPosition = preferences[PreferencesKeys.PHOTO_FRAME_OVERLAY_POSITION] ?: "TOP_LEFT",
+                photoFrameShowWhileLocked = preferences[PreferencesKeys.PHOTO_FRAME_SHOW_WHILE_LOCKED] ?: false,
+                photoFrameMusicBehavior = preferences[PreferencesKeys.PHOTO_FRAME_MUSIC_BEHAVIOR] ?: "KEEP_PHOTO"
             )
         }
 
@@ -275,6 +314,123 @@ class PreferencesRepository(
     suspend fun setWeatherTempUnit(unitId: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.WEATHER_TEMP_UNIT] = unitId
+        }
+    }
+
+    suspend fun setEnableNotificationCardsView(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ENABLE_NOTIFICATION_CARDS_VIEW] = enabled
+        }
+    }
+
+    suspend fun setEnableWeatherPage(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ENABLE_WEATHER_PAGE] = enabled
+        }
+    }
+
+    suspend fun setPhotoFrameSourceType(type: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_SOURCE_TYPE] = type
+        }
+    }
+
+    suspend fun setPhotoFrameSelectedUris(uris: List<String>) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] = uris.distinct().joinToString("\n")
+        }
+    }
+
+    suspend fun addPhotoFrameUris(newUris: List<String>) {
+        context.dataStore.edit { preferences ->
+            val existing = (preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] ?: "")
+                .split("\n")
+                .filter { it.isNotBlank() }
+            val combined = (existing + newUris).distinct()
+            preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] = combined.joinToString("\n")
+        }
+    }
+
+    suspend fun removePhotoFrameUri(uriToRemove: String) {
+        context.dataStore.edit { preferences ->
+            val existing = (preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] ?: "")
+                .split("\n")
+                .filter { it.isNotBlank() && it != uriToRemove }
+            preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] = existing.joinToString("\n")
+        }
+    }
+
+    suspend fun clearPhotoFrameCollection() {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] = ""
+            preferences[PreferencesKeys.PHOTO_FRAME_FOLDER_URI] = ""
+        }
+    }
+
+    suspend fun setPhotoFrameFolderUri(uri: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_FOLDER_URI] = uri
+        }
+    }
+
+    suspend fun setPhotoFrameIntervalSeconds(seconds: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_INTERVAL_SECONDS] = seconds
+        }
+    }
+
+    suspend fun setPhotoFrameShuffle(shuffle: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_SHUFFLE] = shuffle
+        }
+    }
+
+    suspend fun setPhotoFrameFitMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_FIT_MODE] = mode
+        }
+    }
+
+    suspend fun setPhotoFrameMotion(motion: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_MOTION] = motion
+        }
+    }
+
+    suspend fun setPhotoFrameOverlayType(type: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_OVERLAY_TYPE] = type
+        }
+    }
+
+    suspend fun setPhotoFrameOverlayPosition(position: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_OVERLAY_POSITION] = position
+        }
+    }
+
+    suspend fun setPhotoFrameShowWhileLocked(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_SHOW_WHILE_LOCKED] = show
+        }
+    }
+
+    suspend fun setPhotoFrameMusicBehavior(behavior: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_MUSIC_BEHAVIOR] = behavior
+        }
+    }
+
+    suspend fun resetPhotoFrameSettings() {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_INTERVAL_SECONDS] = 60
+            preferences[PreferencesKeys.PHOTO_FRAME_SHUFFLE] = true
+            preferences[PreferencesKeys.PHOTO_FRAME_FIT_MODE] = "CROP"
+            preferences[PreferencesKeys.PHOTO_FRAME_MOTION] = false
+            preferences[PreferencesKeys.PHOTO_FRAME_OVERLAY_TYPE] = "CLOCK_PHOTO"
+            preferences[PreferencesKeys.PHOTO_FRAME_OVERLAY_POSITION] = "TOP_LEFT"
+            preferences[PreferencesKeys.PHOTO_FRAME_SHOW_WHILE_LOCKED] = false
+            preferences[PreferencesKeys.PHOTO_FRAME_MUSIC_BEHAVIOR] = "KEEP_PHOTO"
         }
     }
 }

@@ -37,6 +37,10 @@ object DefaultCardLayouts {
         CardItem(id = "media_card", type = CardType.MEDIA)
     )
 
+    fun getPhotoFrameLayout(): List<CardItem> = listOf(
+        CardItem(id = "clock_main", type = CardType.CLOCK)
+    )
+
     fun serialize(items: List<CardItem>): String {
         return items.filter { it.isVisible }.joinToString(",") { "${it.id}:${it.type.name}" }
     }
@@ -46,6 +50,7 @@ object DefaultCardLayouts {
             return when (fallbackPreset) {
                 "Minimal" -> getMinimalLayout()
                 "Media" -> getMediaLayout()
+                "Photo Frame" -> getPhotoFrameLayout()
                 else -> getDashboardLayout()
             }
         }

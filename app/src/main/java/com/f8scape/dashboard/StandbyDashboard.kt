@@ -83,12 +83,15 @@ import com.f8scape.cards.LiveClockEditorPanel
 import com.f8scape.cards.StyledCalendarDayCell
 import com.f8scape.cards.WeatherDataProvider
 import com.f8scape.cards.WeatherInfo
+import com.f8scape.cards.WeatherIntelligenceView
+import com.f8scape.photoframe.PhotoFrameView
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
 import com.f8scape.media.MediaPlaybackRepository
 import com.f8scape.media.MediaTrackInfo
 import com.f8scape.media.SquigglyProgressBar
 import com.f8scape.notifications.ActiveNotificationRepository
+import com.f8scape.notifications.NotificationCardsView
 import com.f8scape.notifications.NotificationIconsRow
 import com.f8scape.notifications.StatusBarNotificationIcon
 import com.f8scape.util.TimeUtils
@@ -106,6 +109,7 @@ data class CalendarDaySelection(val year: Int, val month: Int, val day: Int)
 enum class StandbyPage {
     CLOCK,
     CALENDAR,
+    WEATHER,
     MUSIC
 }
 
@@ -287,6 +291,7 @@ fun StandbyDashboard(
 
     val trackInfo by MediaPlaybackRepository.mediaTrackState.collectAsState()
     val notificationIcons by ActiveNotificationRepository.activeNotifications.collectAsState()
+    val notificationCards by ActiveNotificationRepository.notificationCards.collectAsState()
 
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -295,11 +300,14 @@ fun StandbyDashboard(
         }
     }
 
-    val availablePages = remember(localCards, trackInfo.hasActiveSession) {
+    val availablePages = remember(localCards, trackInfo.hasActiveSession, preferences.enableWeatherPage) {
         buildList {
             add(StandbyPage.CLOCK)
             if (localCards.any { it.type == CardType.CALENDAR }) {
                 add(StandbyPage.CALENDAR)
+            }
+            if (preferences.enableWeatherPage) {
+                add(StandbyPage.WEATHER)
             }
             if (localCards.any { it.type == CardType.MEDIA } || trackInfo.hasActiveSession) {
                 add(StandbyPage.MUSIC)
@@ -309,6 +317,38 @@ fun StandbyDashboard(
 
     val pagerState = rememberPagerState(pageCount = { availablePages.size })
     val expansionAnimatable = remember { Animatable(0f) }
+    var isNotificationTargetOpen by remember { mutableStateOf(false) }
+    val notificationAnimatable = remember { Animatable(0f) }
+    val notifProgress = notificationAnimatable.value
+    val isNotificationVisible = isNotificationTargetOpen || notifProgress > 0.005f
+
+    fun openNotificationView() {
+        isNotificationTargetOpen = true
+        lastInteractionTimeMs = System.currentTimeMillis()
+        coroutineScope.launch {
+            notificationAnimatable.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = 580,
+                    easing = CubicBezierEasing(0.16f, 1.0f, 0.3f, 1.0f)
+                )
+            )
+        }
+    }
+
+    fun closeNotificationView() {
+        isNotificationTargetOpen = false
+        lastInteractionTimeMs = System.currentTimeMillis()
+        coroutineScope.launch {
+            notificationAnimatable.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(
+                    durationMillis = 500,
+                    easing = FastOutSlowInEasing
+                )
+            )
+        }
+    }
 
     fun openPage(page: StandbyPage) {
         val index = availablePages.indexOf(page)
@@ -348,6 +388,7 @@ fun StandbyDashboard(
     if (backDispatcherOwner != null) {
         BackHandler(enabled = true) {
             when {
+                isNotificationVisible -> closeNotificationView()
                 isClockEditorOpen -> isClockEditorOpen = false
                 isCalendarEditorOpen -> isCalendarEditorOpen = false
                 selectedCalendarDay != null -> selectedCalendarDay = null
@@ -399,21 +440,34 @@ fun StandbyDashboard(
                         onDismissRequest()
                     },
                     onLongPress = {
-                        if (currentScreen == DashboardScreen.GRID && !isEditMode) {
+                        if (currentScreen == DashboardScreen.GRID && !isEditMode && !isNotificationVisible) {
                             isEditMode = true
                         }
                     }
                 )
             }
     ) {
-        // Ken Burns Ambient Artwork / Wallpaper Background (Static when Eco profile or Battery Saver active)
-        KenBurnsBackground(
-            artwork = activeBackgroundArtwork,
-            isEnabled = preferences.kenBurnsEnabled && !isEcoModeActive && activeBackgroundArtwork != null
-        )
+        val isPhotoFrameActive = preferences.activePreset == "Photo Frame" && !(trackInfo.isPlaying && preferences.photoFrameMusicBehavior == "SWITCH_TO_MEDIA")
+
+        if (isPhotoFrameActive) {
+            PhotoFrameView(
+                preferences = preferences,
+                currentTimeMs = currentTimeMs,
+                isEcoModeActive = isEcoModeActive,
+                onDoubleTap = onDismissRequest,
+                onTap = { lastInteractionTimeMs = System.currentTimeMillis() },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            // Ken Burns Ambient Artwork / Wallpaper Background (Static when Eco profile or Battery Saver active)
+            KenBurnsBackground(
+                artwork = activeBackgroundArtwork,
+                isEnabled = preferences.kenBurnsEnabled && !isEcoModeActive && activeBackgroundArtwork != null
+            )
+        }
 
         // Master window dimming scrim (active during music playback or when wallpaper is disabled)
-        if (preferences.screenDimLevel < 0.8f && (activeBackgroundArtwork != null || !preferences.showWallpaperBackground)) {
+        if (!isPhotoFrameActive && preferences.screenDimLevel < 0.8f && (activeBackgroundArtwork != null || !preferences.showWallpaperBackground)) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -446,14 +500,15 @@ fun StandbyDashboard(
             val isExpandedOrAnimating = isPagedMode || progress > 0.005f
 
             // 1. Grid Screen Layer (active when resting on grid or during expansion/collapse)
-            if (selectedCalendarDay == null && (!isPagedMode || progress < 0.995f)) {
+            if (!isPhotoFrameActive && selectedCalendarDay == null && notifProgress < 0.995f && (!isPagedMode || progress < 0.995f)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            // Scales down gently and fades out during expansion; scales back up and fades in during collapse
-                            alpha = (1f - progress * 1.8f).coerceIn(0f, 1f)
-                            val s = 1.0f - (0.06f * progress)
+                            // Scales down gently and fades out during expansion or notification view glide; scales back up and fades in during collapse
+                            val combinedProgress = maxOf(progress, notifProgress)
+                            alpha = (1f - combinedProgress * 1.8f).coerceIn(0f, 1f)
+                            val s = 1.0f - (0.06f * combinedProgress)
                             scaleX = s
                             scaleY = s
                         }
@@ -480,6 +535,8 @@ fun StandbyDashboard(
                             maskCalendar = preferences.calendarMaskLocked,
                             isEditMode = isEditMode,
                             notificationIcons = notificationIcons,
+                            isNotificationInteractive = preferences.enableNotificationCardsView,
+                            onNotificationClick = { openNotificationView() },
                             onEnterEditMode = { isEditMode = true },
                             onUpdateCards = { updated ->
                                 localCards = updated
@@ -492,6 +549,7 @@ fun StandbyDashboard(
                                 val defaultList = when (preferences.activePreset) {
                                     "Minimal" -> DefaultCardLayouts.getMinimalLayout()
                                     "Media" -> DefaultCardLayouts.getMediaLayout()
+                                    "Photo Frame" -> DefaultCardLayouts.getPhotoFrameLayout()
                                     else -> DefaultCardLayouts.getDashboardLayout()
                                 }
                                 localCards = defaultList
@@ -531,19 +589,43 @@ fun StandbyDashboard(
                 }
             }
 
+            // Bottom ambient hint for Photo Frame preset
+            if (isPhotoFrameActive && controlsAlpha > 0.01f) {
+                Text(
+                    text = "Double tap to exit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextTertiary,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.5.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 6.dp)
+                        .alpha(0.4f * controlsAlpha)
+                        .clickable(
+                            enabled = controlsAlpha > 0.1f,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onDismissRequest
+                        )
+                )
+            }
+
             // 2. Full-Screen Paged Screen Layer (active when expanding, expanded, or collapsing back)
-            if (selectedCalendarDay == null && isExpandedOrAnimating) {
+            if (!isPhotoFrameActive && selectedCalendarDay == null && notifProgress < 0.995f && isExpandedOrAnimating) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(top = 28.dp, bottom = 12.dp)
                         .graphicsLayer {
-                            alpha = (progress * 2.2f).coerceIn(0f, 1f)
+                            alpha = (progress * 2.2f * (1f - notifProgress * 1.8f)).coerceIn(0f, 1f)
+                            val s = 1.0f - (0.05f * notifProgress)
+                            scaleX = s
+                            scaleY = s
                         }
                 ) {
                     HorizontalPager(
                         state = pagerState,
-                        userScrollEnabled = !isClockEditorOpen && !isCalendarEditorOpen && progress > 0.95f,
+                        userScrollEnabled = !isClockEditorOpen && !isCalendarEditorOpen && progress > 0.95f && !isNotificationVisible,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(bottom = if (availablePages.size > 1) 22.dp else 0.dp)
@@ -562,6 +644,8 @@ fun StandbyDashboard(
                                     isClockEditorOpen = isClockEditorOpen,
                                     expansionProgress = progress,
                                     notificationIcons = notificationIcons,
+                                    isNotificationInteractive = preferences.enableNotificationCardsView,
+                                    onNotificationClick = { openNotificationView() },
                                     onOpenClockEditor = { isClockEditorOpen = true },
                                     onCloseClockEditor = { isClockEditorOpen = false },
                                     onSelectClockStyle = { style ->
@@ -610,6 +694,15 @@ fun StandbyDashboard(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
+                            StandbyPage.WEATHER -> {
+                                WeatherIntelligenceView(
+                                    cityName = preferences.weatherCity,
+                                    weatherTempUnit = preferences.weatherTempUnit,
+                                    expansionProgress = progress,
+                                    onDoubleTap = onDismissRequest,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                             StandbyPage.MUSIC -> {
                                 ExpandedMusicView(
                                     trackInfo = trackInfo,
@@ -651,7 +744,7 @@ fun StandbyDashboard(
             }
 
             // 3. Day Calendar Screen Layer
-            if (selectedCalendarDay != null) {
+            if (selectedCalendarDay != null && notifProgress < 0.995f) {
                 selectedCalendarDay?.let { selection ->
                     ExpandedCalendarView(
                         selection = selection,
@@ -661,24 +754,58 @@ fun StandbyDashboard(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(top = 28.dp, bottom = 20.dp)
+                            .graphicsLayer {
+                                alpha = (1f - notifProgress * 1.8f).coerceIn(0f, 1f)
+                                val s = 1.0f - (0.05f * notifProgress)
+                                scaleX = s
+                                scaleY = s
+                            }
                     )
                 }
             }
 
-            // Top-left back chevron when in Paged Mode or Calendar Overlay Mode (auto-hides with chrome)
-            if ((isExpandedOrAnimating || selectedCalendarDay != null) && !isEditMode && controlsAlpha > 0.01f) {
+            // 4. Notification Cards Screen Layer
+            if (isNotificationVisible) {
+                NotificationCardsView(
+                    currentTimeMs = currentTimeMs,
+                    clockStyleId = localClockStyle,
+                    clockColorId = localClockColorId,
+                    clockFullColor = localClockFullColor,
+                    notifications = notificationCards,
+                    transitionProgress = notifProgress,
+                    onDismissCard = { key -> ActiveNotificationRepository.dismissNotification(key) },
+                    onOpenNotification = { intent ->
+                        try {
+                            intent.send()
+                            onDismissRequest()
+                        } catch (e: Exception) {
+                            com.f8scape.util.F8Log.e("NotificationView", "Failed to launch notification intent", e)
+                        }
+                    },
+                    onClose = { closeNotificationView() },
+                    onDoubleTap = onDismissRequest,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 28.dp, bottom = 20.dp)
+                )
+            }
+
+            // Top-left back chevron when in Paged Mode, Calendar Overlay Mode, or Notification Cards Mode (auto-hides with chrome)
+            if ((isExpandedOrAnimating || selectedCalendarDay != null || isNotificationVisible) && !isEditMode && controlsAlpha > 0.01f) {
                 IconButton(
                     onClick = {
-                        if (selectedCalendarDay != null) {
+                        if (isNotificationVisible) {
+                            closeNotificationView()
+                        } else if (selectedCalendarDay != null) {
                             selectedCalendarDay = null
                         } else {
                             collapseToGrid()
                         }
                     },
-                    enabled = controlsAlpha > 0.1f && (progress > 0.3f || selectedCalendarDay != null),
+                    enabled = controlsAlpha > 0.1f && (progress > 0.3f || selectedCalendarDay != null || notifProgress > 0.3f),
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .alpha(0.6f * controlsAlpha * (if (selectedCalendarDay != null) 1f else progress))
+                        .alpha(0.6f * controlsAlpha * (if (selectedCalendarDay != null) 1f else maxOf(progress, notifProgress)))
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -1509,6 +1636,8 @@ private fun BigClockView(
     isClockEditorOpen: Boolean = false,
     expansionProgress: Float = 1f,
     notificationIcons: List<StatusBarNotificationIcon> = emptyList(),
+    isNotificationInteractive: Boolean = false,
+    onNotificationClick: (() -> Unit)? = null,
     onOpenClockEditor: () -> Unit = {},
     onCloseClockEditor: () -> Unit = {},
     onSelectClockStyle: (ClockStyle) -> Unit = {},
@@ -1708,6 +1837,8 @@ private fun BigClockView(
                     Spacer(modifier = Modifier.height(14.dp))
                     NotificationIconsRow(
                         icons = notificationIcons,
+                        isInteractive = isNotificationInteractive,
+                        onClick = onNotificationClick,
                         modifier = Modifier.graphicsLayer {
                             translationY = secondaryOffsetYDp.dp.toPx()
                             alpha = secondaryAlpha

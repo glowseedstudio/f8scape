@@ -92,6 +92,7 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         cleanupController()
         ActiveNotificationRepository.setRefreshCallback(null)
         ActiveNotificationRepository.updateNotifications(emptyList())
+        ActiveNotificationRepository.updateNotificationCards(emptyList())
         try {
             mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
         } catch (ignored: Exception) {}
@@ -107,6 +108,7 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         cleanupController()
         ActiveNotificationRepository.setRefreshCallback(null)
         ActiveNotificationRepository.updateNotifications(emptyList())
+        ActiveNotificationRepository.updateNotificationCards(emptyList())
         MediaPlaybackRepository.setTransportHandler(null)
     }
 
@@ -134,26 +136,50 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
 
             F8Log.d("F8Notifications", "refreshActiveNotifications: validSbns = ${validSbns.size}")
 
-            val grouped = validSbns.groupBy { it.packageName }
-            val notificationIcons = grouped.mapNotNull { (pkg, list) ->
-                val latest = list.maxByOrNull { it.postTime } ?: list.first()
-                val bitmap = ActiveNotificationRepository.extractSmallIconBitmap(this, latest)
-                if (bitmap != null) {
-                    StatusBarNotificationIcon(
-                        key = latest.key,
-                        packageName = pkg,
-                        iconBitmap = bitmap,
-                        postTime = latest.postTime,
-                        count = list.size
-                    )
-                } else {
-                    F8Log.w("F8Notifications", "Could not extract icon bitmap for $pkg")
-                    null
+            val allCards = validSbns.mapNotNull { sbn ->
+                val notif = sbn.notification ?: return@mapNotNull null
+                val extras = notif.extras
+                val title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+                    ?: extras?.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()
+                    ?: ""
+                val text = extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
+                    ?: extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+                    ?: ""
+                val subText = extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString() ?: ""
+
+                val smallIconBitmap = ActiveNotificationRepository.extractSmallIconBitmap(this, sbn)
+                val appIconBitmap = ActiveNotificationRepository.extractAppIconBitmap(this, sbn.packageName)
+                val appName = try {
+                    val appInfo = packageManager.getApplicationInfo(sbn.packageName, 0)
+                    packageManager.getApplicationLabel(appInfo).toString()
+                } catch (_: Exception) {
+                    sbn.packageName
                 }
+
+                StatusBarNotificationIcon(
+                    key = sbn.key,
+                    packageName = sbn.packageName,
+                    iconBitmap = smallIconBitmap,
+                    appIconBitmap = appIconBitmap,
+                    appName = appName,
+                    title = title,
+                    text = text,
+                    subText = subText,
+                    postTime = sbn.postTime,
+                    count = 1,
+                    contentIntent = notif.contentIntent
+                )
+            }.sortedByDescending { it.postTime }
+
+            val grouped = allCards.groupBy { it.packageName }
+            val silhouetteIcons = grouped.map { (pkg, list) ->
+                val latest = list.first()
+                latest.copy(count = list.size)
             }.sortedByDescending { it.postTime }.take(6)
 
-            F8Log.d("F8Notifications", "refreshActiveNotifications: loaded ${notificationIcons.size} icons")
-            ActiveNotificationRepository.updateNotifications(notificationIcons)
+            F8Log.d("F8Notifications", "refreshActiveNotifications: loaded ${silhouetteIcons.size} silhouette icons, ${allCards.size} cards")
+            ActiveNotificationRepository.updateNotifications(silhouetteIcons)
+            ActiveNotificationRepository.updateNotificationCards(allCards)
         } catch (e: Exception) {
             F8Log.e("F8Notifications", "Error refreshing active notification icons", e)
         }

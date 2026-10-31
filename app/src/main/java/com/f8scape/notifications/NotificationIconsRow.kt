@@ -16,23 +16,54 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.remember
+
 /**
  * Premium frosted ambient status bar notification cluster displaying monochrome silhouette
  * icons for active incoming notifications (e.g. Messages, WhatsApp, Mail, Calendar).
+ * If isInteractive is enabled in settings, tapping the cluster triggers onClick to open
+ * the split notification cards view.
  */
 @Composable
 fun NotificationIconsRow(
     icons: List<StatusBarNotificationIcon>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = false,
+    onClick: (() -> Unit)? = null
 ) {
     if (icons.isEmpty()) return
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val baseModifier = modifier
+        .clip(RoundedCornerShape(12.dp))
+        .then(
+            if (isInteractive && onClick != null) {
+                Modifier.clickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(color = Color.White.copy(alpha = 0.3f)),
+                    onClick = onClick
+                )
+            } else Modifier
+        )
+        .background(
+            if (isInteractive) Color.White.copy(alpha = 0.09f)
+            else Color.White.copy(alpha = 0.07f)
+        )
+        .border(
+            BorderStroke(
+                0.5.dp,
+                if (isInteractive) Color.White.copy(alpha = 0.20f)
+                else Color.White.copy(alpha = 0.12f)
+            ),
+            RoundedCornerShape(12.dp)
+        )
+        .padding(horizontal = 9.dp, vertical = 4.dp)
+
     Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.07f))
-            .border(BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(12.dp))
-            .padding(horizontal = 9.dp, vertical = 4.dp),
+        modifier = baseModifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

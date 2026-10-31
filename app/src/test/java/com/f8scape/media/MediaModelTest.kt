@@ -39,12 +39,14 @@ class MediaModelTest {
         var paused = false
         var nextSkipped = false
         var prevSkipped = false
+        var seekPosition = 0L
 
         val testHandler = object : MediaTransportActionHandler {
             override fun onPlay() { played = true }
             override fun onPause() { paused = true }
             override fun onSkipToNext() { nextSkipped = true }
             override fun onSkipToPrevious() { prevSkipped = true }
+            override fun onSeekTo(positionMs: Long) { seekPosition = positionMs }
         }
 
         MediaPlaybackRepository.setTransportHandler(testHandler)
@@ -61,6 +63,9 @@ class MediaModelTest {
         MediaPlaybackRepository.skipToPrevious()
         assertTrue(prevSkipped)
 
+        MediaPlaybackRepository.seekTo(4200L)
+        assertEquals(4200L, seekPosition)
+
         // Clean up
         MediaPlaybackRepository.setTransportHandler(null)
     }
@@ -75,6 +80,7 @@ class MediaModelTest {
             override fun onPause() { pauseCalled = true }
             override fun onSkipToNext() {}
             override fun onSkipToPrevious() {}
+            override fun onSeekTo(positionMs: Long) {}
         })
 
         // When not playing -> toggle calls play
