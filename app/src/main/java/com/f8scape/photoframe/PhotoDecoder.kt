@@ -1,14 +1,18 @@
 package com.f8scape.photoframe
 
+import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
+import android.provider.MediaStore
 import com.f8scape.util.F8Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileInputStream
 import java.io.InputStream
 
 /**
@@ -37,13 +41,11 @@ object PhotoDecoder {
         targetHeight: Int = DEFAULT_TARGET_HEIGHT
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
-            val resolver = context.contentResolver
-
             // 1. First pass: Query raw image dimensions without allocating memory
             val options = BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
             }
-            resolver.openInputStream(uri)?.use { stream ->
+            openInputStream(context, uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream, null, options)
             } ?: run {
                 F8Log.w(TAG, "Cannot open input stream for URI: $uri")
@@ -63,7 +65,7 @@ object PhotoDecoder {
             options.inPreferredConfig = Bitmap.Config.ARGB_8888
 
             // 3. Second pass: Decode downsampled bitmap
-            val decodedBitmap = resolver.openInputStream(uri)?.use { stream ->
+            val decodedBitmap = openInputStream(context, uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream, null, options)
             } ?: return@withContext null
 
@@ -131,7 +133,7 @@ object PhotoDecoder {
      */
     private fun getExifRotation(context: Context, uri: Uri): Int {
         return try {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
+            openInputStream(context, uri)?.use { stream ->
                 val exif = ExifInterface(stream)
                 when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
                     ExifInterface.ORIENTATION_ROTATE_90 -> 90
@@ -143,5 +145,71 @@ object PhotoDecoder {
         } catch (_: Exception) {
             0
         }
+    }
+
+    /**
+     * Robust stream opener that handles standard ContentResolver streams, ParcelFileDescriptors,
+     * Photopicker URI-to-MediaStore translation, and direct filesystem paths.
+     */
+    fun openInputStream(context: Context, uri: Uri): InputStream? {
+        val resolver = context.contentResolver
+
+        // 1. Try direct ContentResolver stream
+        try {
+            val stream = resolver.openInputStream(uri)
+            if (stream != null) return stream
+        } catch (_: Exception) {}
+
+        // 2. Try ParcelFileDescriptor
+        try {
+            val pfd = resolver.openFileDescriptor(uri, "r")
+            if (pfd != null) return FileInputStream(pfd.fileDescriptor)
+        } catch (_: Exception) {}
+
+        // 3. If Photo Picker URI (content://media/picker/.../media/<id>)
+        val uriStr = uri.toString()
+        if (uriStr.contains("photopicker") || uri.authority?.contains("photopicker") == true) {
+            val mediaId = uri.lastPathSegment?.toLongOrNull()
+            if (mediaId != null) {
+                val mediaStoreUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, mediaId)
+                // Try MediaStore content URI
+                try {
+                    val stream = resolver.openInputStream(mediaStoreUri)
+                    if (stream != null) return stream
+                } catch (_: Exception) {}
+
+                // Try resolving filesystem path from MediaStore
+                try {
+                    val projection = arrayOf(MediaStore.Images.Media.DATA)
+                    resolver.query(mediaStoreUri, projection, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val dataCol = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+                            if (dataCol != -1) {
+                                val filePath = cursor.getString(dataCol)
+                                if (!filePath.isNullOrBlank()) {
+                                    val file = File(filePath)
+                                    if (file.exists() && file.canRead()) {
+                                        return FileInputStream(file)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+
+        // 4. If direct file path or file URI
+        try {
+            val path = if (uri.scheme == "file") uri.path else if (uri.path?.startsWith("/") == true) uri.path else null
+            if (path != null) {
+                val file = File(path)
+                if (file.exists() && file.canRead()) {
+                    return FileInputStream(file)
+                }
+            }
+        } catch (_: Exception) {}
+
+        return null
     }
 }

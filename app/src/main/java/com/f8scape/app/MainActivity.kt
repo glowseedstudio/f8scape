@@ -215,6 +215,9 @@ class MainActivity : ComponentActivity() {
                                         navController.popBackStack()
                                     },
                                     onPreviewSlideshow = {
+                                        coroutineScope.launch {
+                                            preferencesRepository.setActivePreset("Photo Frame")
+                                        }
                                         navController.navigate(Screen.StandbyPreview.route)
                                     }
                                 )

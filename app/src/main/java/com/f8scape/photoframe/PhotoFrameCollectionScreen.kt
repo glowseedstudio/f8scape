@@ -93,6 +93,19 @@ fun PhotoFrameCollectionScreen(
         }
     }
 
+    // Storage Access Framework durable photos launcher (ACTION_OPEN_DOCUMENT)
+    val safPhotosPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            uris.forEach { uri -> sourceRepo.takePersistablePermission(uri) }
+            coroutineScope.launch {
+                preferencesRepository.setPhotoFrameSourceType("PHOTOS")
+                preferencesRepository.addPhotoFrameUris(uris.map { it.toString() })
+            }
+        }
+    }
+
     // Storage Access Framework folder launcher
     val folderPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -144,7 +157,12 @@ fun PhotoFrameCollectionScreen(
                 },
                 actions = {
                     if (resolvedUris.isNotEmpty()) {
-                        IconButton(onClick = onPreviewSlideshow) {
+                        IconButton(onClick = {
+                            coroutineScope.launch {
+                                preferencesRepository.setActivePreset("Photo Frame")
+                            }
+                            onPreviewSlideshow()
+                        }) {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "Preview Slideshow",
@@ -182,7 +200,7 @@ fun PhotoFrameCollectionScreen(
                     // Source selection buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = {
@@ -194,11 +212,28 @@ fun PhotoFrameCollectionScreen(
                                 containerColor = if (preferences.photoFrameSourceType == "PHOTOS") SamsungBlue else Color(0xFF26262A)
                             ),
                             shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Add Photos", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Photos", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Button(
+                            onClick = {
+                                safPhotosPickerLauncher.launch(arrayOf("image/*"))
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF26262A)
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp),
+                            modifier = Modifier.weight(1.1f)
+                        ) {
+                            Icon(Icons.Default.FileOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Browse Files", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
 
                         Button(
@@ -209,11 +244,12 @@ fun PhotoFrameCollectionScreen(
                                 containerColor = if (preferences.photoFrameSourceType == "FOLDER") SamsungBlue else Color(0xFF26262A)
                             ),
                             shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Choose Folder", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Folder", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
 
@@ -382,11 +418,18 @@ private fun PhotoThumbnailItem(
 ) {
     val context = LocalContext.current
     var bitmap by remember(uri) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var loadFailed by remember(uri) { mutableStateOf(false) }
 
     LaunchedEffect(uri) {
         withContext(Dispatchers.IO) {
             val thumb = PhotoDecoder.decodeThumbnail(context, uri)
-            bitmap = thumb
+            if (thumb != null) {
+                bitmap = thumb
+                loadFailed = false
+            } else {
+                bitmap = null
+                loadFailed = true
+            }
         }
     }
 
@@ -405,6 +448,24 @@ private fun PhotoThumbnailItem(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+        } else if (loadFailed) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.BrokenImage,
+                        contentDescription = "Failed to load",
+                        tint = Color(0xFFFF5252).copy(alpha = 0.7f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text("Unreadable", fontSize = 10.sp, color = TextTertiary)
+                }
+            }
         } else {
             Box(
                 modifier = Modifier.fillMaxSize(),
