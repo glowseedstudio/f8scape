@@ -7,50 +7,55 @@
 **A quiet, dark StandBy display built specifically for the Samsung Galaxy Z Fold 8.**  
 *(Pronounced “Fatescape”)*
 
-Prop your Galaxy Z Fold 8 on a desk, nightstand, or bedside table in **tent mode**, and F8scape turns the outer cover screen into a clean, ambient glanceable display. When you pick the phone up and turn it back to portrait mode, fold it closed, or open it flat, it smoothly gets out of your way.
+Prop your Galaxy Z Fold 8 on a desk, nightstand, or bedside table in **tent mode**, and F8scape turns the outer cover screen into a clean, ambient glanceable display. When you pick the phone up and turn it back upright to portrait mode, fold it closed, or unfold it flat, it smoothly gets out of your way.
 
-No accounts. No subscriptions. No ads or analytics. Just a fast, native utility designed around the Fold 8's passport cover display.
+No accounts. No subscriptions. No ads or tracking. Just a fast, native utility designed around the Fold 8's cover display.
 
 ---
 
 ## ✨ What It Can Do
 
-### 1. Automatic Tent Mode & Snappy Dismissal
-- **Automatic Activation:** Detects when your Fold 8 is propped in tent mode and smoothly fades into StandBy.
-- **Smart Motion Tolerance:** Cushions, mattresses, and desk bumps won't accidentally kill the display—it stays comfortably locked on while propped horizontally.
-- **Instant Portrait Exit:** As soon as you lift the phone and turn it back upright to portrait mode (or fold it flat/closed), it dismisses promptly so you can use your phone immediately.
+### 1. Automatic Tent Mode & Instant Portrait Exit
+- **Hands-Free Activation:** Detects when your Fold 8 is propped in tent mode and smoothly fades into StandBy without having to unlock the phone first.
+- **Smart Motion Tolerance:** Resting on a mattress, sofa arm, or soft nightstand won't accidentally kill the screen—it stays comfortably on while propped horizontally.
+- **Instant Portrait Exit:** As soon as you lift the phone and turn it upright into portrait mode (or fold it flat/closed), it dismisses promptly so your normal phone interface is ready right away.
 
 ### 2. Ambient Dashboard & Full-Screen Views
-Swipe easily between views with fluid, premium physical transitions. When resting, on-screen controls (exit button and pagination dots) auto-hide for a clean, distraction-free look:
+Swipe easily between views with fluid physical glide transitions. When left untouched, controls auto-fade for a clean, distraction-free bedside experience:
 - **Split Dashboard:** A balanced everyday desk view. Shows your chosen clock on the left alongside a smart card on the right (seamlessly switching to your music player when audio is playing, or your calendar, weather, and battery metrics).
 - **Full-Screen Clock:** A large, room-legible timepiece supporting both 12-hour and 24-hour formats across **6 styles**:
-  - *Default* — Balanced modern typography
+  - *Default* — Modern balanced typography
   - *Fluid Gradient* — Soft multi-tone gradient numerals
   - *Split Flip* — Classic mechanical flip clock
   - *Neon Outline* — Clean geometric stencil glow
   - *Analog Chrono* — Watch dial with sweeping hands
   - *Retro LED* — 7-segment digital matrix with hardware AM/PM indicators
 - **Full-Screen Calendar:** Full-month schedule with 5 distinct layouts (*Default*, *Agenda Split*, *Minimal Dot*, *Editorial Bold*, and *Bento Boxed*) and single-day event timelines.
-- **Full-Screen Media Player:** Displays currently playing music or podcasts with full album art, an animated progress scrubber, playback controls, and a **top-edge swipe gesture** to adjust volume smoothly.
+- **Full-Screen Media Player:** Displays currently playing music or podcasts with full album art, an animated progress scrubber, large playback controls, and a **top-edge swipe gesture** to adjust volume smoothly.
+- **Full-Screen Weather Intelligence:** An optional dedicated weather page showing live temperatures, weather conditions, rain forecast, wind, humidity, and upcoming daylight metrics for your city.
 
-### 3. Ambient Photo Frame
+### 3. Interactive Notification Cards & Status Silhouettes
+- **Status Silhouettes:** Subtle monochrome icons appear right above your clock on the dashboard, giving you a quiet hint of unread notifications from messaging and email apps without noisy popups or intrusive banners.
+- **Interactive Notification Deck:** Tap the notification icons to smoothly glide open an interactive notification view, pairing the time on the left with clean notification cards on the right. Tap a card to jump straight into the app. *(Optional in Settings)*.
+
+### 4. Ambient Photo Frame
 Transform your Galaxy Z Fold 8 into a dedicated digital photo frame when propped horizontally:
-- **Zero Broad Storage Permissions:** Uses Android’s modern system Photo Picker and Storage Access Framework (SAF) to select specific photos or folders. No broad storage or media permissions required.
-- **Lifecycle-Aware Slideshow:** Seamless 900ms crossfade transitions between photos, customizable intervals (30s, 1m, 2m, 5m, 15m), and intelligent shuffle mode that avoids immediate repeats.
-- **Customizable Overlays:** Choose between clean **Immersive** photos, or overlay an ambient **Clock** or **Calendar** in any corner (Top-Left, Top-Right, Bottom-Left, or Bottom-Right).
+- **Zero Broad Storage Permissions:** Uses Android’s official system Photo Picker and Storage Access Framework (SAF) to pick specific photos or choose a dedicated folder. F8scape never requests broad media access and never scans or uploads your private photos.
+- **Smooth Slideshow:** Seamless 900ms crossfade transitions between photos, customizable intervals (30s, 1m, 2m, 5m, 15m), and a smart shuffle mode that avoids repeating photos back-to-back.
+- **Customizable Overlays:** Choose clean **Immersive** photos, or overlay an ambient **Clock** or **Calendar** in any corner (Top-Left, Top-Right, Bottom-Left, or Bottom-Right).
 - **Lock-Screen Privacy Shield:** By default, personal photos are shielded with a calm ambient gradient when your device is locked, keeping your private memories secure.
-- **Subtle Photo Motion & Battery Care:** Optional slow Ken Burns pan and zoom that smoothly pauses when settled or when Eco/Battery Saver mode is active. Memory-bounded decoding prevents battery drain and overheating.
+- **Subtle Motion & Battery Care:** Optional gentle Ken Burns zoom and pan that pauses automatically when settled or in Eco/Battery Saver mode.
 
-### 4. Ambient Status Bar Notification Icons
-- Discrete monochrome status bar silhouette icons appear right above your clock on the dashboard, and at the bottom of the full-screen clock view.
-- Provides a quiet, glanceable reminder for unread notifications from apps like Messages, WhatsApp, and Mail without displaying noisy popups, banners, or private message text.
+### 5. Quick Settings Tile
+- Add the **F8scape StandBy** tile directly to your Samsung Quick Settings panel (swipe down twice from the top of your screen, tap edit, and drag the F8scape tile into your active buttons).
+- Tap the tile anytime to instantly pause automatic StandBy activation or manually launch the display.
 
-### 5. Touch-and-Hold Live Studios
+### 6. Touch-and-Hold Live Studios & Edge Gestures
 - **Long-press the Clock** to open the **Clock Studio** and customize styles, accent colors, and choose between subtle `Highlights` or bold `Full Colour`.
 - **Long-press the Calendar** to open the **Calendar Studio** and customize layouts, highlights, and accent colors.
 - **Swipe up/down along the left screen edge** on any StandBy view to adjust screen brightness on the fly.
 
-### 6. OLED Care & Power Saving
+### 7. OLED Longevity & Battery Care
 - **Burn-In Protection:** Subtle pixel-shifting prevents static pixel fatigue during overnight docking.
 - **Eco Mode:** Automatically drops to pure black OLED pixels with reduced sensor polling when Battery Saver is active.
 - **Auto-Off Timer:** Option to turn the display off after 15, 30, or 60 minutes, or stay on continuously while docked.
