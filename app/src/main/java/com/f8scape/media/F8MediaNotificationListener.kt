@@ -57,11 +57,16 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
 
     override fun onCreate() {
         super.onCreate()
+        activeInstance = this
         MediaPlaybackRepository.setTransportHandler(this)
+        ActiveNotificationRepository.setRefreshCallback {
+            mainHandler.post { refreshActiveNotifications() }
+        }
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        activeInstance = this
         F8Log.i("F8Media", "F8MediaNotificationListener connected")
         MediaPlaybackRepository.setTransportHandler(this)
         ActiveNotificationRepository.setRefreshCallback {
@@ -80,6 +85,9 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        if (activeInstance === this) {
+            activeInstance = null
+        }
         F8Log.i("F8Media", "F8MediaNotificationListener disconnected")
         cleanupController()
         ActiveNotificationRepository.setRefreshCallback(null)
@@ -93,24 +101,38 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
 
     override fun onDestroy() {
         super.onDestroy()
+        if (activeInstance === this) {
+            activeInstance = null
+        }
         cleanupController()
         ActiveNotificationRepository.setRefreshCallback(null)
         ActiveNotificationRepository.updateNotifications(emptyList())
         MediaPlaybackRepository.setTransportHandler(null)
     }
 
-    private fun refreshActiveNotifications() {
+    fun refreshActiveNotifications() {
         try {
             val sbns = activeNotifications ?: return
             val myPackage = packageName
+            F8Log.d("F8Notifications", "refreshActiveNotifications: total sbns = ${sbns.size}")
 
             val validSbns = sbns.filter { sbn ->
                 val notif = sbn.notification ?: return@filter false
-                val isOngoing = sbn.isOngoing ||
-                    (notif.flags and Notification.FLAG_ONGOING_EVENT != 0) ||
-                    (notif.flags and Notification.FLAG_FOREGROUND_SERVICE != 0)
-                sbn.packageName != myPackage && !isOngoing && notif.smallIcon != null
+                if (sbn.packageName == myPackage) return@filter false
+
+                // Exclude system ongoing/foreground background noise (USB debugging, charging status, etc.)
+                val isSystemPkg = sbn.packageName == "android" || sbn.packageName == "com.android.systemui"
+                val isSystemOngoing = isSystemPkg && (sbn.isOngoing || (notif.flags and Notification.FLAG_ONGOING_EVENT != 0))
+                if (isSystemOngoing) return@filter false
+
+                // Ignore MIN priority (silent/hidden background channels)
+                if (notif.priority == Notification.PRIORITY_MIN) return@filter false
+
+                // Must have a valid small icon or legacy icon resource
+                notif.smallIcon != null || notif.icon != 0
             }
+
+            F8Log.d("F8Notifications", "refreshActiveNotifications: validSbns = ${validSbns.size}")
 
             val grouped = validSbns.groupBy { it.packageName }
             val notificationIcons = grouped.mapNotNull { (pkg, list) ->
@@ -124,12 +146,16 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
                         postTime = latest.postTime,
                         count = list.size
                     )
-                } else null
+                } else {
+                    F8Log.w("F8Notifications", "Could not extract icon bitmap for $pkg")
+                    null
+                }
             }.sortedByDescending { it.postTime }.take(6)
 
+            F8Log.d("F8Notifications", "refreshActiveNotifications: loaded ${notificationIcons.size} icons")
             ActiveNotificationRepository.updateNotifications(notificationIcons)
         } catch (e: Exception) {
-            F8Log.e("F8Media", "Error refreshing active notification icons", e)
+            F8Log.e("F8Notifications", "Error refreshing active notification icons", e)
         }
     }
 
@@ -349,6 +375,9 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
     }
 
     companion object {
+        var activeInstance: F8MediaNotificationListener? = null
+            private set
+
         fun isNotificationAccessGranted(context: Context): Boolean {
             val packageName = context.packageName
             val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")

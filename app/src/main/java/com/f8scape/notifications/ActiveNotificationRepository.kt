@@ -31,6 +31,9 @@ object ActiveNotificationRepository {
 
     fun requestRefresh() {
         refreshCallback?.invoke()
+        try {
+            com.f8scape.media.F8MediaNotificationListener.activeInstance?.refreshActiveNotifications()
+        } catch (_: Exception) {}
     }
 
     fun updateNotifications(icons: List<StatusBarNotificationIcon>) {
@@ -39,29 +42,40 @@ object ActiveNotificationRepository {
 
     /**
      * Extracts the status bar silhouette icon for a notification.
-     * Uses package context so icon resource IDs resolve correctly across applications,
+     * Uses multiple resilient loaders (direct icon, package context, legacy resource ID, or app icon fallback),
      * and rasterizes the vector/drawable into a crisp 48x48 ARGB bitmap.
      */
     fun extractSmallIconBitmap(context: Context, sbn: StatusBarNotification): Bitmap? {
+        val notif = sbn.notification ?: return null
+        val smallIcon = notif.smallIcon
+
         val drawable: Drawable = (try {
-            val packageContext = context.createPackageContext(sbn.packageName, 0)
-            sbn.notification?.smallIcon?.loadDrawable(packageContext)
+            // 1. Direct Icon.loadDrawable with app context (supported via QUERY_ALL_PACKAGES)
+            smallIcon?.loadDrawable(context)
         } catch (e: Exception) {
-            try {
-                sbn.notification?.smallIcon?.loadDrawable(context)
-            } catch (e2: Exception) {
-                try {
-                    context.packageManager.getApplicationIcon(sbn.packageName)
-                } catch (e3: Exception) {
-                    null
-                }
-            }
+            null
+        }) ?: (try {
+            // 2. Package context with CONTEXT_IGNORE_SECURITY
+            val packageContext = context.createPackageContext(sbn.packageName, Context.CONTEXT_IGNORE_SECURITY)
+            smallIcon?.loadDrawable(packageContext)
+        } catch (e: Exception) {
+            null
+        }) ?: (try {
+            // 3. Legacy notification.icon integer resource ID
+            if (notif.icon != 0) {
+                val packageContext = context.createPackageContext(sbn.packageName, Context.CONTEXT_IGNORE_SECURITY)
+                packageContext.resources.getDrawable(notif.icon, packageContext.theme)
+            } else null
+        } catch (e: Exception) {
+            null
+        }) ?: (try {
+            // 4. Fallback to application launcher icon
+            context.packageManager.getApplicationIcon(sbn.packageName)
+        } catch (e: Exception) {
+            null
         }) ?: return null
 
         return try {
-            if (drawable is BitmapDrawable && drawable.bitmap != null) {
-                return drawable.bitmap
-            }
             val sizePx = 48
             val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)

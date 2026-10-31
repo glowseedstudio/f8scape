@@ -94,6 +94,7 @@ import com.f8scape.notifications.StatusBarNotificationIcon
 import com.f8scape.util.TimeUtils
 import com.f8scape.util.WallpaperHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -288,7 +289,10 @@ fun StandbyDashboard(
     val notificationIcons by ActiveNotificationRepository.activeNotifications.collectAsState()
 
     LaunchedEffect(Unit) {
-        ActiveNotificationRepository.requestRefresh()
+        while (isActive) {
+            ActiveNotificationRepository.requestRefresh()
+            delay(5_000L)
+        }
     }
 
     val availablePages = remember(localCards, trackInfo.hasActiveSession) {
