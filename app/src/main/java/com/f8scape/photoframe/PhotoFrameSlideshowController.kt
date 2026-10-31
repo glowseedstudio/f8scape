@@ -70,7 +70,7 @@ class PhotoFrameSlideshowController(
         }
 
         if (urisChanged || shuffleChanged || playlist.isEmpty()) {
-            rebuildPlaylist(activeUris, isShuffle)
+            playlist = rebuildPlaylist(activeUris, isShuffle)
             playlistIndex = 0
             loadInitialImage()
         } else if (intervalChanged) {
@@ -165,8 +165,17 @@ class PhotoFrameSlideshowController(
     /**
      * Advances to the next photograph in the playlist.
      */
-    fun advanceToNext(skipAnimation: Boolean = false) {
+    fun advanceToNext(skipAnimation: Boolean = false, attempt: Int = 0) {
         if (activeUris.isEmpty()) return
+        if (attempt >= activeUris.size) {
+            F8Log.w(TAG, "All photos in playlist failed to decode. Stopping slideshow.")
+            _state.value = SlideshowState(isEmpty = true, isLoading = false)
+            return
+        }
+        if (activeUris.size == 1 && attempt > 0) {
+            _state.value = SlideshowState(isEmpty = true, isLoading = false)
+            return
+        }
         if (activeUris.size == 1) return // No-op for single image
 
         coroutineScope.launch {
@@ -205,7 +214,7 @@ class PhotoFrameSlideshowController(
             } else {
                 // Corrupt or deleted image, skip to next silently
                 F8Log.w(TAG, "Skipping inaccessible photo: $targetUri")
-                advanceToNext(skipAnimation = true)
+                advanceToNext(skipAnimation = true, attempt = attempt + 1)
             }
         }
     }

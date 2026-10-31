@@ -279,13 +279,15 @@ fun NotificationCardsView(
                     contentPadding = PaddingValues(bottom = 6.dp)
                 ) {
                     items(notifications, key = { it.key }) { card ->
-                        NotificationCardItem(
-                            card = card,
-                            onDismiss = { onDismissCard(card.key) },
-                            onOpen = {
-                                card.contentIntent?.let { onOpenNotification(it) }
-                            }
-                        )
+                        Box(modifier = Modifier.animateItem()) {
+                            NotificationCardItem(
+                                card = card,
+                                onDismiss = { onDismissCard(card.key) },
+                                onOpen = {
+                                    card.contentIntent?.let { onOpenNotification(it) }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -294,8 +296,10 @@ fun NotificationCardsView(
 }
 
 /**
- * Individual frosted notification card with app branding, timestamp, and message body.
+ * Individual frosted notification card with app branding, timestamp, message body,
+ * and swipe-to-dismiss support in both directions.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NotificationCardItem(
     card: StatusBarNotificationIcon,
@@ -303,136 +307,162 @@ private fun NotificationCardItem(
     onOpen: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
+                onDismiss()
+                true
+            } else {
+                false
+            }
+        }
+    )
 
-    Surface(
-        onClick = onOpen,
-        enabled = card.contentIntent != null,
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF16161A).copy(alpha = 0.88f),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f)),
-        interactionSource = interactionSource,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 11.dp)
-        ) {
-            // Header Row: App Icon + App Name + Subtext + Relative Time + Dismiss Button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            val direction = dismissState.dismissDirection
+            val isSwiping = dismissState.targetValue != SwipeToDismissBoxValue.Settled
+            val alignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
+                Alignment.CenterStart
+            } else {
+                Alignment.CenterEnd
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isSwiping) Color(0xFFFF5252).copy(alpha = 0.22f) else Color.Transparent)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = alignment
             ) {
-                // App Icon (Full-color launcher icon or monochrome silhouette fallback)
-                if (card.appIconBitmap != null) {
-                    Image(
-                        bitmap = card.appIconBitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(RoundedCornerShape(5.dp))
-                    )
-                } else if (card.iconBitmap != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(RoundedCornerShape(5.dp))
-                            .background(Color.White.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            bitmap = card.iconBitmap.asImageBitmap(),
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(Color.White, BlendMode.SrcIn),
-                            modifier = Modifier.size(13.dp)
-                        )
-                    }
-                } else {
+                if (isSwiping) {
                     Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.8f),
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss",
+                        tint = Color(0xFFFF5252).copy(alpha = 0.9f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Surface(
+            onClick = onOpen,
+            enabled = card.contentIntent != null,
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF16161A).copy(alpha = 0.88f),
+            border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f)),
+            interactionSource = interactionSource,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 11.dp)
+            ) {
+                // Header Row: App Icon + App Name + Subtext + Relative Time
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // App Icon (Full-color launcher icon or monochrome silhouette fallback)
+                    if (card.appIconBitmap != null) {
+                        Image(
+                            bitmap = card.appIconBitmap.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                        )
+                    } else if (card.iconBitmap != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(Color.White.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                bitmap = card.iconBitmap.asImageBitmap(),
+                                contentDescription = null,
+                                colorFilter = ColorFilter.tint(Color.White, BlendMode.SrcIn),
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                // App Name
-                Text(
-                    text = card.appName.ifBlank { card.packageName },
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.92f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // Optional SubText (e.g. channel or group name)
-                if (card.subText.isNotBlank()) {
+                    // App Name
                     Text(
-                        text = " • ${card.subText}",
-                        fontSize = 11.sp,
-                        color = TextTertiary,
+                        text = card.appName.ifBlank { card.packageName },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.92f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    // Optional SubText (e.g. channel or group name)
+                    if (card.subText.isNotBlank()) {
+                        Text(
+                            text = " • ${card.subText}",
+                            fontSize = 11.sp,
+                            color = TextTertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Relative Time
+                    val relativeTime = TimeUtils.formatRelativeTime(card.postTime)
+                    if (relativeTime.isNotBlank()) {
+                        Text(
+                            text = relativeTime,
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                // Notification Title (Sender, subject, or heading)
+                if (card.title.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = card.title,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Relative Time
-                val relativeTime = TimeUtils.formatRelativeTime(card.postTime)
-                if (relativeTime.isNotBlank()) {
+                // Notification Text (Body preview)
+                if (card.text.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = relativeTime,
-                        fontSize = 11.sp,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                }
-
-                // Dismiss 'x' Button
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
-                        tint = Color.White.copy(alpha = 0.5f),
-                        modifier = Modifier.size(12.dp)
+                        text = card.text,
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.80f),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 16.sp
                     )
                 }
-            }
-
-            // Notification Title (Sender, subject, or heading)
-            if (card.title.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = card.title,
-                    fontSize = 13.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Notification Text (Body preview)
-            if (card.text.isNotBlank()) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = card.text,
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.80f),
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 16.sp
-                )
             }
         }
     }

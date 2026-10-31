@@ -300,21 +300,21 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Preset Toggle Button
+                    // Full-Screen Page Toggle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Set as Active StandBy Preset", style = MaterialTheme.typography.bodyLarge, color = Color.White)
-                            Text("Display photo slideshow automatically when in tent posture", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Text("Full-Screen Photo Frame Page", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text("Swipe to your photo slideshow when in full-screen StandBy mode", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         }
                         Switch(
-                            checked = isPhotoFrameActive,
+                            checked = preferences.enablePhotoFramePage,
                             onCheckedChange = { active ->
                                 coroutineScope.launch {
-                                    preferencesRepository.setActivePreset(if (active) "Photo Frame" else "Dashboard")
+                                    preferencesRepository.setEnablePhotoFramePage(active)
                                 }
                             },
                             colors = defaultSwitchColors

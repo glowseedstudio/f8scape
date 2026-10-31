@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,11 +75,26 @@ fun AppHomeScreen(
     var isWallpaperGranted by remember {
         mutableStateOf(WallpaperHelper.hasWallpaperPermission(context))
     }
+    var isPhotosGranted by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+            } else {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            }
+        )
+    }
 
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         isCalendarGranted = granted
+    }
+
+    val photosPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        isPhotosGranted = granted
     }
 
     // Automatically refresh permission states whenever user returns to the app
@@ -93,6 +109,11 @@ fun AppHomeScreen(
                     Manifest.permission.READ_CALENDAR
                 ) == PackageManager.PERMISSION_GRANTED
                 isWallpaperGranted = WallpaperHelper.hasWallpaperPermission(context)
+                isPhotosGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+                } else {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -523,26 +544,39 @@ fun AppHomeScreen(
             }
         }
 
-        // Optional Enhancement 4: Ambient Photo Frame
+        // Optional Enhancement 4: Ambient Photo Frame Full-Screen Page
         item {
-            val isPhotoFrameActive = preferences.activePreset == "Photo Frame"
             val photoCount = preferences.photoFrameSelectedUrisSerialized.split("\n").filter { it.isNotBlank() }.size
-            val statusDesc = if (preferences.photoFrameSourceType == "FOLDER") {
-                "Folder Selected"
-            } else if (photoCount > 0) {
-                "$photoCount photos selected"
-            } else {
-                "No photos selected"
-            }
+            val isPhotoPageActive = preferences.enablePhotoFramePage
 
             OptionalFeatureCard(
                 title = "Ambient Photo Frame",
-                subtitle = "Transform your landscape cover screen into a native, battery-friendly ambient picture frame with crossfades and customizable clock overlays.",
+                subtitle = if (!isPhotosGranted) {
+                    "Optional · Grant Photos access so F8scape can access your device photos for your ambient slideshow"
+                } else if (preferences.photoFrameSourceType == "FOLDER") {
+                    "Enabled · Dedicated folder slideshow available in full-screen StandBy"
+                } else if (photoCount > 0) {
+                    "Enabled · $photoCount photo(s) ready in your full-screen StandBy slideshow"
+                } else {
+                    "Enabled · No photos added yet — tap Manage Photos to select pictures"
+                },
                 icon = Icons.Default.PhotoLibrary,
-                isEnabled = isPhotoFrameActive,
-                statusText = if (isPhotoFrameActive) "Active Preset ($statusDesc)" else "Optional Preset ($statusDesc)",
-                actionButtonLabel = "Manage Photos",
-                onActionClick = onOpenPhotoCollection
+                isEnabled = isPhotosGranted && isPhotoPageActive,
+                statusText = if (!isPhotosGranted) "Access Needed" else if (isPhotoPageActive) "Active Page" else "Page Disabled",
+                actionButtonLabel = if (!isPhotosGranted) "Enable Access" else "Manage Photos",
+                onActionClick = {
+                    if (!isPhotosGranted) {
+                        photosPermissionLauncher.launch(
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                Manifest.permission.READ_MEDIA_IMAGES
+                            } else {
+                                Manifest.permission.READ_EXTERNAL_STORAGE
+                            }
+                        )
+                    } else {
+                        onOpenPhotoCollection()
+                    }
+                }
             ) {
                 HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
                 Row(
@@ -553,18 +587,41 @@ fun AppHomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Active StandBy Preset", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
-                        Text("Display photo slideshow automatically when placed in tent mode", fontSize = 12.sp, color = TextSecondary)
+                        Text("Full-Screen Photo Page", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Swipe to your photo slideshow when in full-screen StandBy mode", fontSize = 12.sp, color = TextSecondary)
                     }
                     Switch(
-                        checked = isPhotoFrameActive,
+                        checked = isPhotoPageActive,
                         onCheckedChange = { active ->
                             coroutineScope.launch {
-                                preferencesRepository.setActivePreset(if (active) "Photo Frame" else "Dashboard")
+                                preferencesRepository.setEnablePhotoFramePage(active)
                             }
                         },
                         colors = customSwitchColors
                     )
+                }
+
+                if (isPhotosGranted) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        onClick = onOpenPhotoCollection,
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF26262A),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (photoCount > 0) "Manage Photo Collection ($photoCount photos) →" else "Select Photos or Folder →",
+                                fontSize = 13.sp,
+                                color = AccentBlue,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
         }

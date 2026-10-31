@@ -72,36 +72,67 @@ fun PhotoFrameCollectionScreen(
         preferences.photoFrameFolderUri
     ) {
         isLoadingUris = true
-        resolvedUris = sourceRepo.resolveActiveUris(
+        val validUris = sourceRepo.resolveActiveUris(
             sourceType = preferences.photoFrameSourceType,
             selectedUrisSerialized = preferences.photoFrameSelectedUrisSerialized,
             folderUriString = preferences.photoFrameFolderUri
         )
+        resolvedUris = validUris
         isLoadingUris = false
     }
 
-    // System Photo Picker launcher
+    // System Photo Picker launcher with internal caching
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            uris.forEach { uri -> sourceRepo.takePersistablePermission(uri) }
             coroutineScope.launch {
-                preferencesRepository.setPhotoFrameSourceType("PHOTOS")
-                preferencesRepository.addPhotoFrameUris(uris.map { it.toString() })
+                isLoadingUris = true
+                val importedUris = mutableListOf<String>()
+                for (uri in uris) {
+                    sourceRepo.takePersistablePermission(uri)
+                    val local = sourceRepo.importPhotoToInternal(uri)
+                    if (local != null) {
+                        importedUris.add(local.toString())
+                    }
+                }
+                if (importedUris.isNotEmpty()) {
+                    preferencesRepository.setPhotoFrameSourceType("PHOTOS")
+                    preferencesRepository.addPhotoFrameUris(importedUris)
+                } else {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Photo Picker grant was denied by OS. Please use 'Browse Files'.",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                isLoadingUris = false
             }
         }
     }
 
-    // Storage Access Framework durable photos launcher (ACTION_OPEN_DOCUMENT)
+    // Storage Access Framework durable photos launcher (ACTION_OPEN_DOCUMENT) with internal caching
     val safPhotosPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            uris.forEach { uri -> sourceRepo.takePersistablePermission(uri) }
             coroutineScope.launch {
-                preferencesRepository.setPhotoFrameSourceType("PHOTOS")
-                preferencesRepository.addPhotoFrameUris(uris.map { it.toString() })
+                isLoadingUris = true
+                val importedUris = mutableListOf<String>()
+                for (uri in uris) {
+                    sourceRepo.takePersistablePermission(uri)
+                    val local = sourceRepo.importPhotoToInternal(uri)
+                    if (local != null) {
+                        importedUris.add(local.toString())
+                    }
+                }
+                if (importedUris.isNotEmpty()) {
+                    preferencesRepository.setPhotoFrameSourceType("PHOTOS")
+                    preferencesRepository.addPhotoFrameUris(importedUris)
+                }
+                isLoadingUris = false
             }
         }
     }
@@ -159,7 +190,7 @@ fun PhotoFrameCollectionScreen(
                     if (resolvedUris.isNotEmpty()) {
                         IconButton(onClick = {
                             coroutineScope.launch {
-                                preferencesRepository.setActivePreset("Photo Frame")
+                                preferencesRepository.setEnablePhotoFramePage(true)
                             }
                             onPreviewSlideshow()
                         }) {
@@ -370,6 +401,7 @@ fun PhotoFrameCollectionScreen(
                             canRemove = preferences.photoFrameSourceType == "PHOTOS",
                             onRemove = {
                                 sourceRepo.releasePersistablePermission(uri)
+                                sourceRepo.deleteInternalPhoto(uri)
                                 coroutineScope.launch {
                                     preferencesRepository.removePhotoFrameUri(uri.toString())
                                 }
@@ -390,6 +422,7 @@ fun PhotoFrameCollectionScreen(
                 TextButton(
                     onClick = {
                         showClearConfirmation = false
+                        sourceRepo.clearAllInternalPhotos()
                         coroutineScope.launch {
                             preferencesRepository.clearPhotoFrameCollection()
                         }

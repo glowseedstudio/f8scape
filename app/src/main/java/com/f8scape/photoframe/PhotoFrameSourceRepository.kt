@@ -7,6 +7,7 @@ import android.provider.DocumentsContract
 import com.f8scape.util.F8Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 
 /**
@@ -25,6 +26,7 @@ class PhotoFrameSourceRepository(private val context: Context) {
 
     /**
      * Resolves the list of available image URIs for the active source type.
+     * Automatically filters out unreadable or revoked URIs so dead files are omitted.
      */
     suspend fun resolveActiveUris(
         sourceType: String,
@@ -44,7 +46,7 @@ class PhotoFrameSourceRepository(private val context: Context) {
                 }
             }
         } else {
-            // Selected Photos
+            // Selected Photos - filter out unreadable / revoked URIs
             selectedUrisSerialized
                 .split("\n")
                 .map { it.trim() }
@@ -55,6 +57,9 @@ class PhotoFrameSourceRepository(private val context: Context) {
                     } catch (_: Exception) {
                         null
                     }
+                }
+                .filter { uri ->
+                    PhotoDecoder.canOpenUri(context, uri)
                 }
         }
     }
@@ -158,6 +163,93 @@ class PhotoFrameSourceRepository(private val context: Context) {
             leaf.substringAfterLast('/', leaf).ifBlank { "Selected Folder" }
         } catch (_: Exception) {
             "Selected Folder"
+        }
+    }
+
+    /**
+     * Copies a selected photo directly into app internal storage.
+     * This guarantees 100% reliable, permanent, offline file access across reboots,
+     * without being affected by Activity lifecycle or ContentProvider permission limits.
+     */
+    suspend fun importPhotoToInternal(uri: Uri): Uri? = withContext(Dispatchers.IO) {
+        try {
+            // If already an imported local file, verify and return
+            if (uri.scheme == "file") {
+                val path = uri.path
+                if (path != null && File(path).exists()) {
+                    return@withContext uri
+                }
+            }
+
+            val storageDir = File(context.filesDir, "photo_frame_photos").apply {
+                if (!exists()) mkdirs()
+            }
+
+            // Determine appropriate file extension from mime type
+            val mimeType = try { context.contentResolver.getType(uri) } catch (_: Exception) { null }
+            val ext = when {
+                mimeType?.contains("png", ignoreCase = true) == true -> "png"
+                mimeType?.contains("webp", ignoreCase = true) == true -> "webp"
+                mimeType?.contains("heic", ignoreCase = true) == true -> "heic"
+                else -> "jpg"
+            }
+
+            val targetFile = File(storageDir, "photo_${System.currentTimeMillis()}_${(1000..9999).random()}.$ext")
+            val inputStream = PhotoDecoder.openInputStream(context, uri) ?: run {
+                F8Log.w(TAG, "Cannot open stream to import photo from URI: $uri")
+                return@withContext null
+            }
+
+            inputStream.use { input ->
+                targetFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            if (targetFile.exists() && targetFile.length() > 0) {
+                F8Log.i(TAG, "Imported photo successfully: ${targetFile.absolutePath} (${targetFile.length()} bytes)")
+                Uri.fromFile(targetFile)
+            } else {
+                targetFile.delete()
+                null
+            }
+        } catch (e: Exception) {
+            F8Log.e(TAG, "Failed to import photo from $uri", e)
+            null
+        }
+    }
+
+    /**
+     * Deletes an imported photo file from internal storage.
+     */
+    fun deleteInternalPhoto(uri: Uri) {
+        try {
+            val filename = uri.lastPathSegment
+            if (filename != null && (uri.scheme == "file" || uri.toString().contains("photo_frame_photos"))) {
+                val internalDir = File(context.filesDir, "photo_frame_photos")
+                File(internalDir, filename).delete()
+            } else if (uri.scheme == "file") {
+                val path = uri.path
+                if (path != null && path.contains("photo_frame_photos")) {
+                    File(path).delete()
+                }
+            }
+        } catch (e: Exception) {
+            F8Log.w(TAG, "Failed to delete internal photo $uri: ${e.message}")
+        }
+    }
+
+    /**
+     * Clears all imported photos from internal storage.
+     */
+    fun clearAllInternalPhotos() {
+        try {
+            val storageDir = File(context.filesDir, "photo_frame_photos")
+            if (storageDir.exists() && storageDir.isDirectory) {
+                storageDir.listFiles()?.forEach { it.delete() }
+            }
+        } catch (e: Exception) {
+            F8Log.w(TAG, "Failed to clear internal photos: ${e.message}")
         }
     }
 }

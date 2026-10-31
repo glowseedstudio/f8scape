@@ -28,15 +28,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.f8scape.app.navigation.Screen
 import com.f8scape.app.theme.AccentBlue
 import com.f8scape.app.theme.F8scapeTheme
 import com.f8scape.app.theme.PureBlack
 import com.f8scape.app.theme.TextSecondary
+import com.f8scape.dashboard.StandbyPage
 import com.f8scape.dashboard.StandbyPreviewScreen
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.diagnostics.DiagnosticsScreen
@@ -179,7 +182,7 @@ class MainActivity : ComponentActivity() {
                                         navController.navigate(Screen.PhotoCollection.route)
                                     },
                                     onPreviewPhotoFrame = {
-                                        navController.navigate(Screen.StandbyPreview.route)
+                                        navController.navigate(Screen.StandbyPreview.createRoute("PHOTO_FRAME"))
                                     }
                                 )
                             }
@@ -200,8 +203,27 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            composable(Screen.StandbyPreview.route) {
+                            composable(
+                                route = Screen.StandbyPreview.route,
+                                arguments = listOf(
+                                    navArgument("initialPage") {
+                                        type = NavType.StringType
+                                        nullable = true
+                                        defaultValue = null
+                                    }
+                                )
+                            ) { backStackEntry ->
+                                val initialPageParam = backStackEntry.arguments?.getString("initialPage")
+                                val initialPage = when (initialPageParam) {
+                                    "PHOTO_FRAME" -> StandbyPage.PHOTO_FRAME
+                                    "WEATHER" -> StandbyPage.WEATHER
+                                    "CALENDAR" -> StandbyPage.CALENDAR
+                                    "MUSIC" -> StandbyPage.MUSIC
+                                    "CLOCK" -> StandbyPage.CLOCK
+                                    else -> null
+                                }
                                 StandbyPreviewScreen(
+                                    initialPage = initialPage,
                                     onDismiss = {
                                         navController.popBackStack()
                                     }
@@ -216,9 +238,12 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onPreviewSlideshow = {
                                         coroutineScope.launch {
-                                            preferencesRepository.setActivePreset("Photo Frame")
+                                            preferencesRepository.setEnablePhotoFramePage(true)
+                                            if (preferencesRepository.userPreferencesFlow.first().activePreset == "Photo Frame") {
+                                                preferencesRepository.setActivePreset("Dashboard")
+                                            }
                                         }
-                                        navController.navigate(Screen.StandbyPreview.route)
+                                        navController.navigate(Screen.StandbyPreview.createRoute("PHOTO_FRAME"))
                                     }
                                 )
                             }

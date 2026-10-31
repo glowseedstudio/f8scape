@@ -43,6 +43,7 @@ data class UserPreferences(
     val weatherTempUnit: String = "SYSTEM", // SYSTEM, CELSIUS, FAHRENHEIT
     val enableNotificationCardsView: Boolean = false,
     val enableWeatherPage: Boolean = false,
+    val enablePhotoFramePage: Boolean = true,
     val photoFrameSourceType: String = "PHOTOS", // "PHOTOS" or "FOLDER"
     val photoFrameSelectedUrisSerialized: String = "",
     val photoFrameFolderUri: String = "",
@@ -90,6 +91,7 @@ class PreferencesRepository(
         val WEATHER_TEMP_UNIT = stringPreferencesKey("weather_temp_unit")
         val ENABLE_NOTIFICATION_CARDS_VIEW = booleanPreferencesKey("enable_notification_cards_view")
         val ENABLE_WEATHER_PAGE = booleanPreferencesKey("enable_weather_page")
+        val ENABLE_PHOTO_FRAME_PAGE = booleanPreferencesKey("enable_photo_frame_page")
         val PHOTO_FRAME_SOURCE_TYPE = stringPreferencesKey("photo_frame_source_type")
         val PHOTO_FRAME_SELECTED_URIS = stringPreferencesKey("photo_frame_selected_uris")
         val PHOTO_FRAME_FOLDER_URI = stringPreferencesKey("photo_frame_folder_uri")
@@ -143,6 +145,7 @@ class PreferencesRepository(
                 weatherTempUnit = preferences[PreferencesKeys.WEATHER_TEMP_UNIT] ?: "SYSTEM",
                 enableNotificationCardsView = preferences[PreferencesKeys.ENABLE_NOTIFICATION_CARDS_VIEW] ?: false,
                 enableWeatherPage = preferences[PreferencesKeys.ENABLE_WEATHER_PAGE] ?: false,
+                enablePhotoFramePage = preferences[PreferencesKeys.ENABLE_PHOTO_FRAME_PAGE] ?: true,
                 photoFrameSourceType = preferences[PreferencesKeys.PHOTO_FRAME_SOURCE_TYPE] ?: "PHOTOS",
                 photoFrameSelectedUrisSerialized = preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] ?: "",
                 photoFrameFolderUri = preferences[PreferencesKeys.PHOTO_FRAME_FOLDER_URI] ?: "",
@@ -326,6 +329,12 @@ class PreferencesRepository(
     suspend fun setEnableWeatherPage(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.ENABLE_WEATHER_PAGE] = enabled
+        }
+    }
+
+    suspend fun setEnablePhotoFramePage(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ENABLE_PHOTO_FRAME_PAGE] = enabled
         }
     }
 

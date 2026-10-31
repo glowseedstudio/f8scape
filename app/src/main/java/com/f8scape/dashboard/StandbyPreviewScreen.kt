@@ -15,7 +15,8 @@ import com.f8scape.app.theme.PureBlack
 
 @Composable
 fun StandbyPreviewScreen(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    initialPage: StandbyPage? = null
 ) {
     val view = LocalView.current
 
@@ -42,7 +43,8 @@ fun StandbyPreviewScreen(
             .background(PureBlack)
     ) {
         StandbyDashboard(
-            onDismissRequest = onDismiss
+            onDismissRequest = onDismiss,
+            initialPage = initialPage
         )
     }
 }

@@ -231,16 +231,6 @@ fun PhotoFrameView(
                         fontSize = 13.sp,
                         color = TextSecondary
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    val resolvedClockStyle = remember(preferences.clockStyle) { ClockStyle.fromId(preferences.clockStyle) }
-                    val resolvedClockColor = remember(preferences.clockColorId) { ClockColorOption.fromId(preferences.clockColorId).color }
-                    F8ClockFace(
-                        currentTimeMs = currentTimeMs,
-                        style = resolvedClockStyle,
-                        accentColor = resolvedClockColor,
-                        isLarge = false,
-                        fullColor = preferences.clockFullColor
-                    )
                 }
             }
             return@Box
@@ -275,16 +265,6 @@ fun PhotoFrameView(
                         color = TextSecondary,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier.widthIn(max = 420.dp)
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    val resolvedClockStyle = remember(preferences.clockStyle) { ClockStyle.fromId(preferences.clockStyle) }
-                    val resolvedClockColor = remember(preferences.clockColorId) { ClockColorOption.fromId(preferences.clockColorId).color }
-                    F8ClockFace(
-                        currentTimeMs = currentTimeMs,
-                        style = resolvedClockStyle,
-                        accentColor = resolvedClockColor,
-                        isLarge = false,
-                        fullColor = preferences.clockFullColor
                     )
                 }
             }
@@ -338,107 +318,6 @@ fun PhotoFrameView(
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(28.dp)
                 )
-            }
-        }
-
-        // --- 4. SUBTLE AMBIENT CONTRAST VIGNETTE ---
-        // Guarantees white numerals and dates are effortlessly readable without altering global brightness
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            PureBlack.copy(alpha = 0.35f),
-                            Color.Transparent,
-                            PureBlack.copy(alpha = 0.45f)
-                        )
-                    )
-                )
-        )
-
-        // --- 5. OVERLAY PRESENTATION (CLOCK / CALENDAR / IMMERSIVE) ---
-        val alignment = when (preferences.photoFrameOverlayPosition) {
-            "TOP_RIGHT" -> Alignment.TopEnd
-            "BOTTOM_LEFT" -> Alignment.BottomStart
-            "BOTTOM_RIGHT" -> Alignment.BottomEnd
-            else -> Alignment.TopStart
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 26.dp, vertical = 20.dp),
-            contentAlignment = alignment
-        ) {
-            when (preferences.photoFrameOverlayType) {
-                "IMMERSIVE" -> {
-                    // Minimal compact time & date chip
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = PureBlack.copy(alpha = 0.40f),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.18f))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            val is24H = android.text.format.DateFormat.is24HourFormat(context)
-                            Text(
-                                text = TimeUtils.formatClockTime(currentTimeMs, is24Hour = is24H),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = TimeUtils.formatDate(currentTimeMs),
-                                fontSize = 11.5.sp,
-                                color = Color.White.copy(alpha = 0.85f)
-                            )
-                        }
-                    }
-                }
-                "CALENDAR_PHOTO" -> {
-                    // Calendar presentation overlay
-                    Box(
-                        modifier = Modifier
-                            .width(280.dp)
-                            .height(180.dp)
-                    ) {
-                        AmbientCalendarCard(
-                            calendarStyleId = preferences.calendarStyle,
-                            calendarColorId = preferences.calendarColorId,
-                            calendarFullColor = preferences.calendarFullColor,
-                            maskTitle = preferences.calendarMaskLocked
-                        )
-                    }
-                }
-                else -> {
-                    // "CLOCK_PHOTO" (Default): customizable F8ClockFace
-                    val resolvedClockStyle = remember(preferences.clockStyle) { ClockStyle.fromId(preferences.clockStyle) }
-                    val resolvedClockColor = remember(preferences.clockColorId) { ClockColorOption.fromId(preferences.clockColorId).color }
-                    Column(
-                        horizontalAlignment = when (preferences.photoFrameOverlayPosition) {
-                            "TOP_RIGHT", "BOTTOM_RIGHT" -> Alignment.End
-                            else -> Alignment.Start
-                        }
-                    ) {
-                        F8ClockFace(
-                            currentTimeMs = currentTimeMs,
-                            style = resolvedClockStyle,
-                            accentColor = resolvedClockColor,
-                            isLarge = false,
-                            fullColor = preferences.clockFullColor
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = TimeUtils.formatDate(currentTimeMs),
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White.copy(alpha = 0.88f)
-                        )
-                    }
-                }
             }
         }
     }

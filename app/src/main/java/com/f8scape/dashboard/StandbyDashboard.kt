@@ -110,7 +110,8 @@ enum class StandbyPage {
     CLOCK,
     CALENDAR,
     WEATHER,
-    MUSIC
+    MUSIC,
+    PHOTO_FRAME
 }
 
 private enum class DashboardScreen {
@@ -121,7 +122,8 @@ private enum class DashboardScreen {
 
 @Composable
 fun StandbyDashboard(
-    onDismissRequest: () -> Unit
+    onDismissRequest: () -> Unit,
+    initialPage: StandbyPage? = null
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -133,7 +135,7 @@ fun StandbyDashboard(
     var isEditMode by remember { mutableStateOf(false) }
     var isClockEditorOpen by remember { mutableStateOf(false) }
     var isCalendarEditorOpen by remember { mutableStateOf(false) }
-    var isPagedMode by remember { mutableStateOf(false) }
+    var isPagedMode by remember { mutableStateOf(initialPage != null) }
     var selectedCalendarDay by remember { mutableStateOf<CalendarDaySelection?>(null) }
     var localContentBrightness by remember {
         mutableFloatStateOf(preferences.contentBrightness)
@@ -300,7 +302,7 @@ fun StandbyDashboard(
         }
     }
 
-    val availablePages = remember(localCards, trackInfo.hasActiveSession, preferences.enableWeatherPage) {
+    val availablePages = remember(localCards, trackInfo.hasActiveSession, preferences.enableWeatherPage, preferences.enablePhotoFramePage) {
         buildList {
             add(StandbyPage.CLOCK)
             if (localCards.any { it.type == CardType.CALENDAR }) {
@@ -312,11 +314,36 @@ fun StandbyDashboard(
             if (localCards.any { it.type == CardType.MEDIA } || trackInfo.hasActiveSession) {
                 add(StandbyPage.MUSIC)
             }
+            if (preferences.enablePhotoFramePage) {
+                add(StandbyPage.PHOTO_FRAME)
+            }
         }
     }
 
-    val pagerState = rememberPagerState(pageCount = { availablePages.size })
-    val expansionAnimatable = remember { Animatable(0f) }
+    val initialPageIndex = remember(availablePages, initialPage) {
+        if (initialPage != null) {
+            val idx = availablePages.indexOf(initialPage)
+            if (idx >= 0) idx else 0
+        } else {
+            0
+        }
+    }
+    val pagerState = rememberPagerState(
+        initialPage = initialPageIndex,
+        pageCount = { availablePages.size }
+    )
+    val expansionAnimatable = remember { Animatable(if (initialPage != null) 1f else 0f) }
+
+    LaunchedEffect(initialPage) {
+        if (initialPage != null) {
+            val idx = availablePages.indexOf(initialPage)
+            if (idx >= 0) {
+                pagerState.scrollToPage(idx)
+            }
+            isPagedMode = true
+            expansionAnimatable.snapTo(1f)
+        }
+    }
     var isNotificationTargetOpen by remember { mutableStateOf(false) }
     val notificationAnimatable = remember { Animatable(0f) }
     val notifProgress = notificationAnimatable.value
@@ -708,6 +735,16 @@ fun StandbyDashboard(
                                     trackInfo = trackInfo,
                                     expansionProgress = progress,
                                     onDoubleTap = onDismissRequest,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            StandbyPage.PHOTO_FRAME -> {
+                                PhotoFrameView(
+                                    preferences = preferences,
+                                    currentTimeMs = currentTimeMs,
+                                    isEcoModeActive = isEcoModeActive,
+                                    onDoubleTap = onDismissRequest,
+                                    onTap = { lastInteractionTimeMs = System.currentTimeMillis() },
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }

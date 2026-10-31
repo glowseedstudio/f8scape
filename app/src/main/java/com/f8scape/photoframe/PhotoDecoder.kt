@@ -45,10 +45,16 @@ object PhotoDecoder {
             val options = BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
             }
-            openInputStream(context, uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, options)
-            } ?: run {
-                F8Log.w(TAG, "Cannot open input stream for URI: $uri")
+            val boundsStream = openInputStream(context, uri) ?: run {
+                F8Log.w(TAG, "Cannot open bounds stream for URI: $uri")
+                return@withContext null
+            }
+            try {
+                boundsStream.use { stream ->
+                    BitmapFactory.decodeStream(stream, null, options)
+                }
+            } catch (e: Exception) {
+                F8Log.w(TAG, "Failed to decode bounds for $uri: ${e.message}")
                 return@withContext null
             }
 
@@ -65,8 +71,17 @@ object PhotoDecoder {
             options.inPreferredConfig = Bitmap.Config.ARGB_8888
 
             // 3. Second pass: Decode downsampled bitmap
-            val decodedBitmap = openInputStream(context, uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, options)
+            val decodeStream = openInputStream(context, uri) ?: run {
+                F8Log.w(TAG, "Cannot open decode stream for URI: $uri")
+                return@withContext null
+            }
+            val decodedBitmap = try {
+                decodeStream.use { stream ->
+                    BitmapFactory.decodeStream(stream, null, options)
+                }
+            } catch (e: Exception) {
+                F8Log.w(TAG, "Failed to decode bitmap for $uri: ${e.message}")
+                null
             } ?: return@withContext null
 
             // 4. Resolve EXIF orientation and rotate if needed
@@ -148,25 +163,78 @@ object PhotoDecoder {
     }
 
     /**
-     * Robust stream opener that handles standard ContentResolver streams, ParcelFileDescriptors,
-     * Photopicker URI-to-MediaStore translation, and direct filesystem paths.
+     * Checks if a given URI can be opened and read without decoding full bitmap.
+     */
+    fun canOpenUri(context: Context, uri: Uri): Boolean {
+        return try {
+            val filename = uri.lastPathSegment
+            if (filename != null && (uri.scheme == "file" || uri.toString().contains("photo_frame_photos"))) {
+                val internalDir = File(context.filesDir, "photo_frame_photos")
+                val directFile = File(internalDir, filename)
+                if (directFile.exists() && directFile.canRead() && directFile.length() > 0) {
+                    return true
+                }
+            }
+            if (uri.scheme == "file") {
+                val file = File(uri.path ?: return false)
+                file.exists() && file.canRead() && file.length() > 0
+            } else {
+                openInputStream(context, uri)?.use { true } ?: false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Robust stream opener that handles local files, ContentResolver streams,
+     * ParcelFileDescriptors, and Photopicker URI-to-MediaStore translation.
      */
     fun openInputStream(context: Context, uri: Uri): InputStream? {
+        // 1. Direct check in internal app photo storage (fastest, zero IPC, guaranteed accessible)
+        try {
+            val filename = uri.lastPathSegment
+            if (filename != null && (uri.scheme == "file" || uri.toString().contains("photo_frame_photos"))) {
+                val internalDir = File(context.filesDir, "photo_frame_photos")
+                val directFile = File(internalDir, filename)
+                if (directFile.exists() && directFile.canRead() && directFile.length() > 0) {
+                    return FileInputStream(directFile)
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 2. Direct file path or file URI
+        try {
+            val path = if (uri.scheme == "file") uri.path else if (uri.path?.startsWith("/") == true) uri.path else null
+            if (path != null) {
+                val file = File(path)
+                if (file.exists() && file.canRead()) {
+                    return FileInputStream(file)
+                }
+            }
+        } catch (e: Exception) {
+            F8Log.w(TAG, "File path open failed for $uri: ${e.message}")
+        }
+
         val resolver = context.contentResolver
 
-        // 1. Try direct ContentResolver stream
+        // 2. Try direct ContentResolver stream
         try {
             val stream = resolver.openInputStream(uri)
             if (stream != null) return stream
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            F8Log.w(TAG, "resolver.openInputStream failed for $uri: ${e.javaClass.simpleName}: ${e.message}")
+        }
 
-        // 2. Try ParcelFileDescriptor
+        // 3. Try ParcelFileDescriptor
         try {
             val pfd = resolver.openFileDescriptor(uri, "r")
             if (pfd != null) return FileInputStream(pfd.fileDescriptor)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            F8Log.w(TAG, "openFileDescriptor failed for $uri: ${e.javaClass.simpleName}: ${e.message}")
+        }
 
-        // 3. If Photo Picker URI (content://media/picker/.../media/<id>)
+        // 4. If Photo Picker URI (content://media/picker/.../media/<id>)
         val uriStr = uri.toString()
         if (uriStr.contains("photopicker") || uri.authority?.contains("photopicker") == true) {
             val mediaId = uri.lastPathSegment?.toLongOrNull()
@@ -198,17 +266,6 @@ object PhotoDecoder {
                 } catch (_: Exception) {}
             }
         }
-
-        // 4. If direct file path or file URI
-        try {
-            val path = if (uri.scheme == "file") uri.path else if (uri.path?.startsWith("/") == true) uri.path else null
-            if (path != null) {
-                val file = File(path)
-                if (file.exists() && file.canRead()) {
-                    return FileInputStream(file)
-                }
-            }
-        } catch (_: Exception) {}
 
         return null
     }
