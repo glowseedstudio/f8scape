@@ -26,6 +26,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.f8scape.app.theme.*
+import com.f8scape.notifications.NotificationIconsRow
+import com.f8scape.notifications.StatusBarNotificationIcon
 import com.f8scape.util.TimeUtils
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -146,6 +148,7 @@ fun AmbientClockCard(
     clockFullColor: Boolean = false,
     isLarge: Boolean = true,
     isEditMode: Boolean = false,
+    notificationIcons: List<StatusBarNotificationIcon> = emptyList(),
     onClockClick: () -> Unit = {},
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
@@ -196,6 +199,14 @@ fun AmbientClockCard(
                 .clickable(enabled = !isEditMode) { onClockClick() },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Active notification icons cluster directly above the clock
+            if (notificationIcons.isNotEmpty()) {
+                NotificationIconsRow(
+                    icons = notificationIcons,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
+
             // Unified Flagship Clock Face (synced with Big Clock & Settings)
             F8ClockFace(
                 currentTimeMs = currentTimeMs,
@@ -516,14 +527,14 @@ fun AmbientCalendarCard(
                         text = monthName,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = resolvedColor,
+                        color = if (calendarFullColor) resolvedColor else Color.White,
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Expand Calendar",
-                        tint = resolvedColor.copy(alpha = 0.65f),
+                        tint = if (calendarFullColor) resolvedColor.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.65f),
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -549,7 +560,7 @@ fun AmbientCalendarCard(
                         text = dayName,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isWeekend || calendarFullColor) resolvedColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.45f),
+                        color = if (calendarFullColor) resolvedColor.copy(alpha = 0.85f) else if (isWeekend) resolvedColor.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.45f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.weight(1f)
                     )

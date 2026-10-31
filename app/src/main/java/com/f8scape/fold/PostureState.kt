@@ -16,6 +16,7 @@ data class PostureData(
     val isCoverScreenActive: Boolean,
     val stabilityConfidence: Float, // 0.0 to 1.0 (how still the phone is on a table/surface)
     val hingeAngleDeg: Float? = null,
+    val isPortrait: Boolean = false,
     val source: String,
     val timestampMs: Long = System.currentTimeMillis()
 )

@@ -138,8 +138,9 @@ fun HorologyAnalogClock(
         // 4. Minute Hand
         val minuteAngleRad = Math.toRadians(((minutes + seconds / 60.0) * 6.0) - 90.0)
         val minuteLength = radius * 0.74f
+        val minuteHandColor = if (fullColor) accentColor.copy(alpha = 0.90f) else accentColor
         drawLine(
-            color = primaryElementColor.copy(alpha = 0.90f),
+            color = minuteHandColor,
             start = center,
             end = Offset(
                 center.x + (minuteLength * cos(minuteAngleRad)).toFloat(),
@@ -184,6 +185,7 @@ fun RetroLedDigitalClock(
     accentColor: Color,
     digitHeight: Dp,
     is24Hour: Boolean = false,
+    fullColor: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val cal = remember(currentTimeMs) {
@@ -204,6 +206,11 @@ fun RetroLedDigitalClock(
     val m1 = minute / 10
     val m2 = minute % 10
     val colonVisible = (second % 2) == 0
+
+    val hourActiveColor = if (fullColor) accentColor else Color.White
+    val hourGhostColor = if (fullColor) accentColor.copy(alpha = 0.09f) else Color.White.copy(alpha = 0.08f)
+    val minActiveColor = accentColor
+    val minGhostColor = accentColor.copy(alpha = 0.09f)
 
     val digitWidth = digitHeight * 0.54f
     val colonWidth = digitHeight * 0.16f
@@ -238,8 +245,8 @@ fun RetroLedDigitalClock(
             width = dw,
             height = dh,
             thickness = segThick,
-            activeColor = accentColor,
-            ghostColor = accentColor.copy(alpha = 0.09f)
+            activeColor = hourActiveColor,
+            ghostColor = hourGhostColor
         )
         xCursor += dw + sp
 
@@ -250,8 +257,8 @@ fun RetroLedDigitalClock(
             width = dw,
             height = dh,
             thickness = segThick,
-            activeColor = accentColor,
-            ghostColor = accentColor.copy(alpha = 0.09f)
+            activeColor = hourActiveColor,
+            ghostColor = hourGhostColor
         )
         xCursor += dw + sp
 
@@ -277,8 +284,8 @@ fun RetroLedDigitalClock(
             width = dw,
             height = dh,
             thickness = segThick,
-            activeColor = accentColor,
-            ghostColor = accentColor.copy(alpha = 0.09f)
+            activeColor = minActiveColor,
+            ghostColor = minGhostColor
         )
         xCursor += dw + sp
 
@@ -289,8 +296,8 @@ fun RetroLedDigitalClock(
             width = dw,
             height = dh,
             thickness = segThick,
-            activeColor = accentColor,
-            ghostColor = accentColor.copy(alpha = 0.09f)
+            activeColor = minActiveColor,
+            ghostColor = minGhostColor
         )
 
         // Hardware-style AM / PM LED indicators when in 12-hour mode

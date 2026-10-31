@@ -8,6 +8,9 @@ import android.os.Handler
 import android.os.Looper
 import android.view.*
 import android.view.accessibility.AccessibilityEvent
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -26,7 +29,13 @@ import com.f8scape.util.F8Log
  * User-enabled Accessibility Service.
  * Provides lawful background posture detection and full-screen cover overlay host.
  */
-class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRegistryOwner {
+class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRegistryOwner, OnBackPressedDispatcherOwner {
+
+    private val backDispatcher = OnBackPressedDispatcher {
+        removeStandbyOverlay()
+    }
+    override val onBackPressedDispatcher: OnBackPressedDispatcher
+        get() = backDispatcher
 
     companion object {
         var isServiceRunning = false
@@ -76,6 +85,7 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                 val composeView = ComposeView(this).apply {
                     setViewTreeLifecycleOwner(this@CoverOverlayService)
                     setViewTreeSavedStateRegistryOwner(this@CoverOverlayService)
+                    setViewTreeOnBackPressedDispatcherOwner(this@CoverOverlayService)
                     setContent {
                         F8scapeTheme {
                             StandbyDashboard(
@@ -176,8 +186,10 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                     .setInterpolator(android.view.animation.AccelerateInterpolator(1.5f))
                     .withEndAction {
                         try {
-                            windowManager?.removeView(view)
-                            F8Log.i("CoverOverlayService", "Removed Standby overlay")
+                            if (view.isAttachedToWindow) {
+                                windowManager?.removeView(view)
+                                F8Log.i("CoverOverlayService", "Removed Standby overlay")
+                            }
                         } catch (e: Exception) {
                             F8Log.e("CoverOverlayService", "Failed to remove overlay window", e)
                         }
@@ -185,7 +197,9 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                     .start()
             } catch (e: Exception) {
                 try {
-                    windowManager?.removeView(view)
+                    if (view.isAttachedToWindow) {
+                        windowManager?.removeView(view)
+                    }
                 } catch (_: Exception) {}
             }
         }

@@ -1,5 +1,6 @@
 package com.f8scape.media
 
+import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
@@ -12,6 +13,8 @@ import android.os.Looper
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.f8scape.notifications.ActiveNotificationRepository
+import com.f8scape.notifications.StatusBarNotificationIcon
 import com.f8scape.util.F8Log
 
 /**
@@ -61,11 +64,15 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         super.onListenerConnected()
         F8Log.i("F8Media", "F8MediaNotificationListener connected")
         MediaPlaybackRepository.setTransportHandler(this)
+        ActiveNotificationRepository.setRefreshCallback {
+            mainHandler.post { refreshActiveNotifications() }
+        }
         try {
             mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
             val component = ComponentName(this, F8MediaNotificationListener::class.java)
             mediaSessionManager?.addOnActiveSessionsChangedListener(sessionsChangedListener, component)
             refreshActiveSessions()
+            refreshActiveNotifications()
         } catch (e: Exception) {
             F8Log.e("F8Media", "Failed to register active sessions changed listener", e)
         }
@@ -75,6 +82,8 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         super.onListenerDisconnected()
         F8Log.i("F8Media", "F8MediaNotificationListener disconnected")
         cleanupController()
+        ActiveNotificationRepository.setRefreshCallback(null)
+        ActiveNotificationRepository.updateNotifications(emptyList())
         try {
             mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
         } catch (ignored: Exception) {}
@@ -85,7 +94,43 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
     override fun onDestroy() {
         super.onDestroy()
         cleanupController()
+        ActiveNotificationRepository.setRefreshCallback(null)
+        ActiveNotificationRepository.updateNotifications(emptyList())
         MediaPlaybackRepository.setTransportHandler(null)
+    }
+
+    private fun refreshActiveNotifications() {
+        try {
+            val sbns = activeNotifications ?: return
+            val myPackage = packageName
+
+            val validSbns = sbns.filter { sbn ->
+                val notif = sbn.notification ?: return@filter false
+                val isOngoing = sbn.isOngoing ||
+                    (notif.flags and Notification.FLAG_ONGOING_EVENT != 0) ||
+                    (notif.flags and Notification.FLAG_FOREGROUND_SERVICE != 0)
+                sbn.packageName != myPackage && !isOngoing && notif.smallIcon != null
+            }
+
+            val grouped = validSbns.groupBy { it.packageName }
+            val notificationIcons = grouped.mapNotNull { (pkg, list) ->
+                val latest = list.maxByOrNull { it.postTime } ?: list.first()
+                val bitmap = ActiveNotificationRepository.extractSmallIconBitmap(this, latest)
+                if (bitmap != null) {
+                    StatusBarNotificationIcon(
+                        key = latest.key,
+                        packageName = pkg,
+                        iconBitmap = bitmap,
+                        postTime = latest.postTime,
+                        count = list.size
+                    )
+                } else null
+            }.sortedByDescending { it.postTime }.take(6)
+
+            ActiveNotificationRepository.updateNotifications(notificationIcons)
+        } catch (e: Exception) {
+            F8Log.e("F8Media", "Error refreshing active notification icons", e)
+        }
     }
 
     private fun refreshActiveSessions() {
@@ -272,11 +317,17 @@ class F8MediaNotificationListener : NotificationListenerService(), MediaTranspor
         super.onNotificationPosted(sbn)
         // Refresh active sessions on notification changes (e.g., track changes from Spotify/YouTube Music)
         refreshActiveSessions()
+        mainHandler.post {
+            refreshActiveNotifications()
+        }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
         refreshActiveSessions()
+        mainHandler.post {
+            refreshActiveNotifications()
+        }
     }
 
     override fun onSkipToPrevious() {

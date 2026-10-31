@@ -64,6 +64,7 @@ class SensorPostureSource(
 
                 val stability = poseDetector.getStabilityConfidence()
                 val isTentPose = poseDetector.isTentOrientationCandidate()
+                val isPortrait = poseDetector.isPortraitOrientation()
 
                 val posture = when {
                     lastHingeAngle != null -> {
@@ -86,6 +87,7 @@ class SensorPostureSource(
                         isCoverScreenActive = true,
                         stabilityConfidence = stability,
                         hingeAngleDeg = lastHingeAngle,
+                        isPortrait = isPortrait,
                         source = name,
                         timestampMs = System.currentTimeMillis()
                     )

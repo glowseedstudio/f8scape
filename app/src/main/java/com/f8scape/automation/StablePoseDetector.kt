@@ -95,6 +95,18 @@ class StablePoseDetector(
         return isLandscapeResting
     }
 
+    /**
+     * Checks if gravity vector indicates the phone is oriented in portrait mode (upright or inverted).
+     * In portrait orientation, gravity is dominant along the device's vertical Y axis (normalizedY > 0.70, near full portrait upright).
+     */
+    @Synchronized
+    fun isPortraitOrientation(): Boolean {
+        val totalG = sqrt(lastGravityX * lastGravityX + lastGravityY * lastGravityY + lastGravityZ * lastGravityZ)
+        if (totalG < 1.0f) return false
+        val normalizedY = abs(lastGravityY / totalG)
+        return normalizedY > 0.70f
+    }
+
     @Synchronized
     fun reset() {
         sampleWindow.clear()

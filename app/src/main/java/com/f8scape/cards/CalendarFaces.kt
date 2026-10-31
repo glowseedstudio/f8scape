@@ -162,6 +162,9 @@ fun StyledCalendarDayCell(
                     Box(
                         modifier = Modifier
                             .size(badgeSize)
+                            .then(
+                                if (fullColor) Modifier.background(accentColor.copy(alpha = 0.22f), CircleShape) else Modifier
+                            )
                             .border(if (isCompact) 1.5.dp else 2.dp, accentColor, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -218,6 +221,8 @@ fun StyledCalendarDayCell(
                                     .border(if (isCompact) 1.2.dp else 1.8.dp, accentColor, matrixShape)
                             } else if (hasEvents) {
                                 Modifier.border(1.dp, accentColor.copy(alpha = 0.45f), matrixShape)
+                            } else if (fullColor) {
+                                Modifier.border(0.5.dp, accentColor.copy(alpha = 0.20f), matrixShape)
                             } else Modifier
                         ),
                     contentAlignment = Alignment.Center
@@ -265,7 +270,7 @@ fun StyledCalendarDayCell(
                     color = when {
                         isToday -> accentColor
                         hasEvents -> if (fullColor) accentColor else Color.White
-                        else -> if (fullColor) accentColor.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.72f)
+                        else -> regularTextColor
                     },
                     textAlign = TextAlign.Center
                 )

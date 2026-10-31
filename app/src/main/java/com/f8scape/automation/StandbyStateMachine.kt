@@ -26,6 +26,7 @@ class StandbyStateMachine(
 
     private var candidateStartTimeMs: Long = 0L
     private var lastExitTimeMs: Long = 0L
+    private var exitDebounceStartTimeMs: Long = 0L
 
     fun updatePolicy(newPolicy: TriggerPolicy) {
         policy = newPolicy
@@ -99,16 +100,45 @@ class StandbyStateMachine(
             }
 
             StandbyMode.ACTIVE_DASHBOARD -> {
-                // Exit triggers: device picked up (stability < 0.55), fold changed, or orientation lost
-                if (!isTent || !isCoverActive || postureData.stabilityConfidence < 0.55f) {
-                    lastExitTimeMs = currentTimeMs
-                    val exitReason = when {
-                        !isCoverActive -> "Cover screen inactive"
-                        !isTent -> "Fold posture changed (${postureData.posture.name})"
-                        else -> "Movement/pickup detected (confidence=${"%.2f".format(postureData.stabilityConfidence)})"
+                // Posture retention with hysteresis: phone remains in horizontal/landscape tent orientation
+                // within hinge angle envelope (30°–155°), and not flat or closed.
+                // Screen touches, widget taps, and cushion motion do not dismiss unless turned to portrait or folded.
+                val isAngleInEnvelope = postureData.hingeAngleDeg?.let { it in 30f..155f }
+                    ?: (postureData.posture == FoldPosture.TENT_CANDIDATE || postureData.posture == FoldPosture.HALF_OPENED)
+                val isNotFlatOrClosed = postureData.posture != FoldPosture.CLOSED && postureData.posture != FoldPosture.FLAT
+                val isNotPortrait = !postureData.isPortrait
+
+                val isRetainingTent = isCoverActive && isAngleInEnvelope && isNotFlatOrClosed && isNotPortrait
+
+                if (isRetainingTent) {
+                    // Posture is within hysteresis envelope; cancel any pending exit debounce
+                    if (exitDebounceStartTimeMs != 0L) {
+                        F8Log.d("StateMachine", "Tent posture recovered, cancelled exit debounce")
+                        exitDebounceStartTimeMs = 0L
                     }
-                    transitionTo(StandbyMode.EXITING, exitReason, Action.DismissCoverDashboard)
-                    return Action.DismissCoverDashboard
+                } else {
+                    // Out of active tent envelope (e.g. turned back up to portrait mode, folded flat, or closed)
+                    if (exitDebounceStartTimeMs == 0L) {
+                        exitDebounceStartTimeMs = currentTimeMs
+                        F8Log.d("StateMachine", "Exit trigger candidate (isPortrait=${postureData.isPortrait}, posture=${postureData.posture}), started exit debounce timer (${policy.exitDebounceMs}ms)")
+                    }
+
+                    val debounceElapsed = currentTimeMs - exitDebounceStartTimeMs
+                    if (debounceElapsed >= policy.exitDebounceMs) {
+                        lastExitTimeMs = currentTimeMs
+                        exitDebounceStartTimeMs = 0L
+                        val exitReason = when {
+                            !isCoverActive -> "Cover screen inactive"
+                            postureData.isPortrait -> "Device turned up to portrait mode"
+                            postureData.posture == FoldPosture.CLOSED -> "Device closed"
+                            postureData.posture == FoldPosture.FLAT -> "Device unfolded flat"
+                            postureData.hingeAngleDeg != null && postureData.hingeAngleDeg !in 30f..155f ->
+                                "Hinge angle out of hysteresis envelope (${postureData.hingeAngleDeg}°)"
+                            else -> "Fold posture changed (${postureData.posture.name})"
+                        }
+                        transitionTo(StandbyMode.EXITING, exitReason, Action.DismissCoverDashboard)
+                        return Action.DismissCoverDashboard
+                    }
                 }
             }
 
@@ -153,6 +183,10 @@ class StandbyStateMachine(
     private fun transitionTo(newMode: StandbyMode, reason: String, sideEffect: Action?) {
         val oldMode = _uiState.value.mode
         if (oldMode == newMode) return
+
+        if (newMode != StandbyMode.ACTIVE_DASHBOARD) {
+            exitDebounceStartTimeMs = 0L
+        }
 
         F8Log.i("StateMachine", "Transition: $oldMode -> $newMode ($reason)")
         _uiState.value = _uiState.value.copy(

@@ -139,6 +139,7 @@ class StandbyAutomationCoordinator(
         if (CoverOverlayService.isServiceRunning) {
             CoverOverlayService.activeInstance?.removeStandbyOverlay()
         }
+        DashboardActivity.dismissIfActive()
         stateMachine.onDashboardDismissed()
     }
 }

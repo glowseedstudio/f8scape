@@ -1,113 +1,84 @@
+<p align="center">
+  <img src="Icon.png" width="140" alt="F8scape Logo" />
+</p>
+
 # F8scape
 
 **A quiet, dark StandBy display built specifically for the Samsung Galaxy Z Fold 8.**  
 *(Pronounced “Fatescape”)*
 
-Prop your Galaxy Z Fold 8 on a desk or bedside table in **tent mode**, and F8scape turns the outer cover screen into a clean, glanceable ambient display. Pick the phone up, fold it closed, or open it flat, and it gets out of your way immediately.
+Prop your Galaxy Z Fold 8 on a desk, nightstand, or bedside table in **tent mode**, and F8scape turns the outer cover screen into a clean, ambient glanceable display. When you pick the phone up and turn it back to portrait mode, fold it closed, or open it flat, it smoothly gets out of your way.
 
-No accounts. No subscriptions. No analytics or telemetry. Just a fast, native utility designed around the Fold 8's passport cover display (`1248 × 1972`).
+No accounts. No subscriptions. No ads or analytics. Just a fast, native utility designed around the Fold 8's passport cover display.
 
 ---
 
-## ✨ What It Does
+## ✨ What It Can Do
 
-### 1. Automatic Tent Mode Detection
-F8scape combines the Fold 8's hardware hinge sensor (`55°–135°`) with accelerometer stillness checks. It waits until the phone is genuinely resting on a flat surface in tent posture before fading in—so it won't accidentally trigger while you're holding or adjusting the phone.
+### 1. Automatic Tent Mode & Snappy Dismissal
+- **Automatic Activation:** Detects when your Fold 8 is propped in tent mode and smoothly fades into StandBy.
+- **Smart Motion Tolerance:** Cushions, mattresses, and desk bumps won't accidentally kill the display—it stays comfortably locked on while propped horizontally.
+- **Instant Portrait Exit:** As soon as you lift the phone and turn it back upright to portrait mode (or fold it flat/closed), it dismisses promptly so you can use your phone immediately.
 
-### 2. Four Swipeable StandBy Views
-Swipe horizontally across the cover screen to move between four dedicated views (the bottom page indicator automatically fades out after 10 seconds of idle time so the screen stays completely clean):
+### 2. Ambient Dashboard & Full-Screen Views
+Swipe easily between views with fluid, premium physical transitions. When resting, on-screen controls (exit button and pagination dots) auto-hide for a clean, distraction-free look:
+- **Split Dashboard:** A balanced everyday desk view. Shows your chosen clock on the left alongside a smart card on the right (seamlessly switching to your music player when audio is playing, or your calendar, weather, and battery metrics).
+- **Full-Screen Clock:** A large, room-legible timepiece supporting both 12-hour and 24-hour formats across **6 styles**:
+  - *Default* — Balanced modern typography
+  - *Fluid Gradient* — Soft multi-tone gradient numerals
+  - *Split Flip* — Classic mechanical flip clock
+  - *Neon Outline* — Clean geometric stencil glow
+  - *Analog Chrono* — Watch dial with sweeping hands
+  - *Retro LED* — 7-segment digital matrix with hardware AM/PM indicators
+- **Full-Screen Calendar:** Full-month schedule with 5 distinct layouts (*Default*, *Agenda Split*, *Minimal Dot*, *Editorial Bold*, and *Bento Boxed*) and single-day event timelines.
+- **Full-Screen Media Player:** Displays currently playing music or podcasts with full album art, an animated progress scrubber, playback controls, and a **top-edge swipe gesture** to adjust volume smoothly.
 
-- **Split Dashboard:** Your everyday desk view. Shows your customized Clock on the left and a smart stack on the right (automatically switching to Media Controls when music is playing, or your Calendar, Weather, and Battery cards).
-- **Full-Screen Clock:** A large, room-legible timepiece that respects your phone's 12-hour or 24-hour time format. Choose from **6 styles**:
-  - **Default** — Clean, balanced typographic display
-  - **Fluid Gradient** — Soft multi-tone gradient numerals
-  - **Split Flip** — Classic mechanical split-flap cards
-  - **Neon Outline** — Spaced geometric stencil tubes with subtle glow
-  - **Analog Chrono** — Oversized watch dial with sweeping hands (`Highlights` or `Full Colour`)
-  - **Retro LED** — 7-segment digital matrix with unlit ghost segments and hardware `AM`/`PM` indicators
-- **Full-Screen Calendar:** Full-month and upcoming schedule view with **5 layouts** (*Default*, *Agenda Split*, *Minimal Dot*, *Editorial Bold*, and *Bento Boxed*), 8 accent colours, and `Highlights` vs `Full Colour` modes.
-- **Full-Screen Media Player:** Appears automatically when music or podcasts are playing, complete with album art, an animated progress scrubber, big tap targets for play/pause and track skipping, and a **top-edge left/right swipe gesture** to smoothly adjust music volume.
+### 3. Ambient Status Bar Notification Icons
+- Discrete monochrome status bar silhouette icons appear right above your clock on the dashboard, and at the bottom of the full-screen clock view.
+- Provides a quiet, glanceable reminder for unread notifications from apps like Messages, WhatsApp, and Mail without displaying noisy popups, banners, or private message text.
 
-### 3. Touch-and-Hold Live Studio & Edge Gestures
-You don't need to unfold the phone to tweak how StandBy looks or behaves:
-- **Long-press the Clock** (in Split Dashboard or Full-Screen Clock) to open the **Clock Studio** and live-preview styles, accent colours, and highlight modes.
-- **Long-press the Calendar** to open the **Calendar Studio**.
-- **Swipe up/down along the left screen edge** on any StandBy view to adjust numeral and widget brightness on the fly.
-- **Swipe left/right along the top edge of the Music screen** to adjust media playback volume with a sleek pill indicator.
-- **Tap the top-right gear icon** on the StandBy screen to adjust wallpaper visibility, subtle motion, and brightness sliders.
+### 4. Touch-and-Hold Live Studios
+- **Long-press the Clock** to open the **Clock Studio** and customize styles, accent colors, and choose between subtle `Highlights` or bold `Full Colour`.
+- **Long-press the Calendar** to open the **Calendar Studio** and customize layouts, highlights, and accent colors.
+- **Swipe up/down along the left screen edge** on any StandBy view to adjust screen brightness on the fly.
 
-### 4. Built for OLED Longevity & Battery Life
-- **Burn-In Protection:** Periodic subtle pixel-shifting keeps static pixels from fatiguing the cover OLED panel during long desk or overnight sessions.
-- **Ambient vs. Eco Power Profiles:** Switch manually or let F8scape automatically drop into **Eco Mode** (pure black OLED background, zero background motion, reduced sensor polling) when Android Battery Saver turns on or the device warms up.
-- **Auto-Off Timer:** Optionally turn the StandBy display off after `15`, `30`, or `60` minutes in tent mode, or leave it on `Never` while docked.
-- **Phone Call Guardrail:** Automatically hides the StandBy overlay the moment a phone call rings or connects so you always have immediate access to the native dialer.
+### 5. OLED Care & Power Saving
+- **Burn-In Protection:** Subtle pixel-shifting prevents static pixel fatigue during overnight docking.
+- **Eco Mode:** Automatically drops to pure black OLED pixels with reduced sensor polling when Battery Saver is active.
+- **Auto-Off Timer:** Option to turn the display off after 15, 30, or 60 minutes, or stay on continuously while docked.
+- **Call Protection:** Automatically hides the StandBy screen the moment a phone call rings or connects.
 
 ---
 
 ## 🔐 Permissions & Why We Need Them
 
-F8scape asks for the absolute minimum permissions needed to function. When you first open the app, a 2-step setup guides you through the two required permissions; everything else is optional and can be toggled on or off from the Home screen.
+We believe in complete transparency. F8scape only requests permissions that directly power user-facing features, and your private data never leaves your device:
 
-### Required to Run
-| Permission | Why F8scape Needs It | Privacy Guarantee |
+| Permission | Why F8scape Uses It | Plain English Privacy Guarantee |
 | :--- | :--- | :--- |
-| **Accessibility Service** | Allows F8scape to keep its lightweight hinge-angle listener alive in the background and display the StandBy screen reliably on the outer cover display when tented. | Configured with `canRetrieveWindowContent="false"` and `accessibilityEventTypes=""`. F8scape **cannot** read screen text, notifications, passwords, or taps from other apps. |
-| **Appear on Top** (`SYSTEM_ALERT_WINDOW`) | Lets F8scape draw the dark StandBy dashboard over the cover screen as soon as the phone settles into tent mode. | Used strictly to render the local StandBy overlay window. |
-
-### Optional Features (Enabled from the App Home Screen)
-| Permission | Why F8scape Needs It | Privacy Guarantee |
-| :--- | :--- | :--- |
-| **Notification Access** *(Optional)* | Detects active media sessions (Spotify, YouTube Music, Apple Music, Pocket Casts, etc.) so you can see album art and control playback in tent mode. | Reads only `MediaSession` metadata (`MediaController`). Personal notifications and messages are never read or stored. |
-| **Read Calendar** *(Optional)* | Shows dots on days with events and lists your next upcoming appointment on the Calendar card. Includes a **Mask When Locked** option in Settings. | Queried locally on-device via Android's `CalendarContract`. Calendar data never leaves your phone. |
-| **Photos & Media** *(Optional)* | Loads your actual custom wallpaper bitmap for the ambient Ken Burns background. | Only used locally to render your wallpaper; never leaves your device. |
-| **Internet** *(Weather & Updates)* | Fetches weather from Open-Meteo and checks GitHub releases for in-app updates. | Locked via `network_security_config.xml` to Open-Meteo and GitHub over TLS. |
-| **Install App Updates** (`REQUEST_INSTALL_PACKAGES`) | Lets you download and install new F8scape releases directly from GitHub without needing to manually sideload every update. | Android native package installer prompt; only installs official signed F8scape APKs. |
-| **Run at Startup** (`RECEIVE_BOOT_COMPLETED`) | Restores the background tent-posture watcher after you restart your phone or install an app update. | Internal receiver (`exported="false"`). |
-
-### 5. In-App Updates (Direct from GitHub)
-- F8scape checks for new releases on GitHub automatically every 24 hours in the background.
-- You can also check manually anytime via the **Check for Updates** button on the **About** screen or in **Settings**.
-- When an update is available, you can view the changelog, download the APK with a live progress indicator, and install it with one tap.
+| **Accessibility Service** *(Required)* | Allows Android to detect when the phone is propped in tent mode and show the StandBy display over the cover screen without having to unlock the phone first. | F8scape cannot see your passwords, text you type, or content from other apps. It is strictly used to monitor hinge posture and host the ambient display. |
+| **Appear on Top** *(Required)* | Lets F8scape draw the dark StandBy screen on top of your cover display when tented. | Used purely to render the visual StandBy screen. |
+| **Notification Access** *(Optional)* | Detects active media playback (Spotify, YouTube Music, Apple Music, podcasts, etc.) to show album art and controls, and displays subtle status bar notification silhouette icons. | Personal notification text and messages are never read, stored, or sent anywhere. |
+| **Calendar** *(Optional)* | Displays event dots and your next upcoming appointments on the calendar card. | Read locally on-device. Your calendar schedule never leaves your phone. |
+| **Wallpaper / Media** *(Optional)* | Extracts your current home wallpaper so it can be shown as a subtle, ambient background behind the clock. | Used only to display your background locally. |
+| **Internet** *(Optional)* | Fetches local weather updates from Open-Meteo and checks GitHub for new app releases. | Outbound requests are strictly limited to weather forecasts and GitHub release checks over secure HTTPS. |
+| **Install Updates** *(Optional)* | Allows you to download and install new F8scape releases directly from within the app. | Uses Android’s standard package installer prompt; only installs official signed F8scape updates. |
 
 ---
 
-## 🛡️ Security by Design
+## 📦 Download & Installation
 
-- **Zero Trackers or Ads:** No Firebase, no Google Play Services analytics, no crash-reporting SDKs, and no third-party telemetry libraries.
-- **Strict HTTPS Whitelisting:** Cleartext HTTP traffic is blocked at the OS manifest level (`usesCleartextTraffic="false"`), and outbound connections are restricted solely to Open-Meteo over TLS.
-- **Zero Dynamic Code Execution:** No `WebView`, no JavaScript bridges, no shell execution, and no runtime reflection.
-- **Tapjacking Protection:** The configuration app enforces `filterTouchesWhenObscured = true` so malicious overlays cannot trick you into tapping settings.
-- **No Cloud Backups:** `android:allowBackup="false"` ensures your local preferences stay strictly on your device.
+1. Grab the latest `F8scape-v1.0.2.apk` from the [**Releases**](../../releases) page on your Galaxy Z Fold 8.
+2. Tap the APK to install it.
+3. Open **F8scape** and follow the quick 2-step setup (**Accessibility Service** and **Appear on Top**).
+4. *(Optional)* Turn on **Music & Media Controls**, **Calendar**, or your **Weather City & Unit** from the Home tab.
+5. Prop your Fold 8 into **tent position** (`~90°`) on your desk or nightstand.
 
----
-
-## 📦 Installation
-
-1. Download the latest `F8scape-v1.0.1.apk` from the [**Releases**](../../releases) page on your Galaxy Z Fold 8.
-2. Open the APK to install it.
-3. Launch **F8scape** and complete the quick 2-step setup (**Accessibility Service** and **Appear on Top**).
-4. *(Optional)* Enable **Music & Media Controls**, **Calendar Events**, or customize your **Weather City & Unit (`°C` / `°F`)** right from the Home tab.
-5. Fold your phone into **tent position** (`~90°`) and set it down on your desk.
-
----
-
-## 🛠️ Building from Source
-
-Requirements: **JDK 17** and the **Android SDK (API 35+)**.
-
-```bash
-# Run unit tests
-./gradlew test
-
-# Build minified & resource-shrunk Release APK
-./gradlew assembleRelease
-```
-
-The compiled release APK will be generated at `app/build/outputs/apk/release/app-release.apk`.
+### Built-in In-App Updates
+F8scape includes a built-in updater. It checks for new GitHub releases in the background, or you can tap **Check for Updates** anytime in Settings or About to install updates directly with one tap.
 
 ---
 
 ## 📄 License & Disclaimer
 
-See [PRIVACY.md](PRIVACY.md) for the full breakdown of local data handling.  
-F8scape is an independent project created for Galaxy Z Fold 8 owners and is not affiliated with or endorsed by Samsung Electronics.
+F8scape is an independent open-source utility designed specifically for Galaxy Z Fold 8 owners and is not affiliated with or endorsed by Samsung Electronics.

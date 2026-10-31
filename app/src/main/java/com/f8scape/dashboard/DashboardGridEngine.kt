@@ -23,10 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.f8scape.app.theme.*
 import com.f8scape.cards.*
+import com.f8scape.notifications.StatusBarNotificationIcon
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -45,6 +47,7 @@ fun DashboardGridEngine(
     calendarFullColor: Boolean = false,
     maskCalendar: Boolean = false,
     isEditMode: Boolean = false,
+    notificationIcons: List<StatusBarNotificationIcon> = emptyList(),
     onEnterEditMode: () -> Unit = {},
     onUpdateCards: (List<CardItem>) -> Unit = {},
     onDoneEdit: () -> Unit = {},
@@ -82,7 +85,7 @@ fun DashboardGridEngine(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            .padding(horizontal = 18.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -91,20 +94,25 @@ fun DashboardGridEngine(
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            letterSpacing = 1.1.sp,
+                            modifier = Modifier.weight(1f, fill = false),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
 
+                        Spacer(modifier = Modifier.width(16.dp))
+
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Add Card Button
                             IconButton(
                                 onClick = { showAddCardDialog = true },
                                 modifier = Modifier
-                                    .size(34.dp)
+                                    .size(36.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(Color.White.copy(alpha = 0.12f))
+                                    .background(Color.White.copy(alpha = 0.14f))
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add card", tint = Color.White, modifier = Modifier.size(20.dp))
                             }
@@ -113,9 +121,9 @@ fun DashboardGridEngine(
                             IconButton(
                                 onClick = onResetDefaults,
                                 modifier = Modifier
-                                    .size(34.dp)
+                                    .size(36.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(Color.White.copy(alpha = 0.12f))
+                                    .background(Color.White.copy(alpha = 0.14f))
                             ) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Reset", tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
                             }
@@ -128,11 +136,11 @@ fun DashboardGridEngine(
                                     contentColor = Color.Black
                                 ),
                                 shape = RoundedCornerShape(16.dp),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                modifier = Modifier.height(34.dp)
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                                modifier = Modifier.height(36.dp)
                             ) {
                                 Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(5.dp))
                                 Text("Done", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -172,6 +180,7 @@ fun DashboardGridEngine(
                                 clockFullColor = clockFullColor,
                                 isLarge = true,
                                 isEditMode = isEditMode,
+                                notificationIcons = notificationIcons,
                                 onClockClick = { onExpandClock?.invoke() },
                                 onRemove = if (cards.size > 1) {
                                     { onUpdateCards(cards.filter { it.id != clockCard.id }) }
@@ -203,6 +212,7 @@ fun DashboardGridEngine(
                                     calendarFullColor = calendarFullColor,
                                     maskCalendar = maskCalendar,
                                     isEditMode = isEditMode,
+                                    notificationIcons = notificationIcons,
                                     onMoveUp = if (index > 0) {
                                         {
                                             val mutable = companionCards.toMutableList()
@@ -254,6 +264,7 @@ fun DashboardGridEngine(
                                     calendarFullColor = calendarFullColor,
                                     maskCalendar = maskCalendar,
                                     isEditMode = isEditMode,
+                                    notificationIcons = notificationIcons,
                                     onRemove = if (cards.size > 1) {
                                         { onUpdateCards(cards.filter { it.id != item.id }) }
                                     } else null,
@@ -288,6 +299,7 @@ fun DashboardGridEngine(
                             calendarFullColor = calendarFullColor,
                             maskCalendar = maskCalendar,
                             isEditMode = isEditMode,
+                            notificationIcons = notificationIcons,
                             onMoveUp = if (index > 0) {
                                 {
                                     val mutable = cards.toMutableList()
@@ -458,6 +470,7 @@ private fun RenderCard(
     calendarFullColor: Boolean = false,
     maskCalendar: Boolean,
     isEditMode: Boolean,
+    notificationIcons: List<StatusBarNotificationIcon> = emptyList(),
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
@@ -478,6 +491,7 @@ private fun RenderCard(
             clockFullColor = clockFullColor,
             isLarge = false,
             isEditMode = isEditMode,
+            notificationIcons = notificationIcons,
             onClockClick = { onExpandClock?.invoke() },
             onMoveUp = onMoveUp,
             onMoveDown = onMoveDown,

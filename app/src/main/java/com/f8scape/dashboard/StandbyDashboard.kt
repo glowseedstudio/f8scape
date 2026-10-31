@@ -5,17 +5,25 @@ import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.media.AudioManager
 import android.os.BatteryManager
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -80,6 +88,9 @@ import com.f8scape.data.UserPreferences
 import com.f8scape.media.MediaPlaybackRepository
 import com.f8scape.media.MediaTrackInfo
 import com.f8scape.media.SquigglyProgressBar
+import com.f8scape.notifications.ActiveNotificationRepository
+import com.f8scape.notifications.NotificationIconsRow
+import com.f8scape.notifications.StatusBarNotificationIcon
 import com.f8scape.util.TimeUtils
 import com.f8scape.util.WallpaperHelper
 import kotlinx.coroutines.delay
@@ -220,14 +231,18 @@ fun StandbyDashboard(
         label = "IdleDimAlpha"
     )
 
-    // Fade page indicator off after 10 seconds of inactivity, restoring immediately on touch
-    val pageIndicatorAlpha by animateFloatAsState(
-        targetValue = if (isIdleDimmed) 0.0f else 1.0f,
+    // Auto-hide chrome (X button, back chevron, pagination dots, bottom hint) after 4.5s of inactivity
+    val isControlsVisible = remember(currentTimeMs, lastInteractionTimeMs, isEditMode, isClockEditorOpen, isCalendarEditorOpen) {
+        isEditMode || isClockEditorOpen || isCalendarEditorOpen || ((currentTimeMs - lastInteractionTimeMs) < 4500L)
+    }
+
+    val controlsAlpha by animateFloatAsState(
+        targetValue = if (isControlsVisible) 1.0f else 0.0f,
         animationSpec = tween(
-            durationMillis = 800,
+            durationMillis = 500,
             easing = FastOutSlowInEasing
         ),
-        label = "PageIndicatorAlpha"
+        label = "ControlsAlpha"
     )
 
     // Slow, cinema-grade organic entrance transition when waking into Tent Mode
@@ -270,6 +285,11 @@ fun StandbyDashboard(
     )
 
     val trackInfo by MediaPlaybackRepository.mediaTrackState.collectAsState()
+    val notificationIcons by ActiveNotificationRepository.activeNotifications.collectAsState()
+
+    LaunchedEffect(Unit) {
+        ActiveNotificationRepository.requestRefresh()
+    }
 
     val availablePages = remember(localCards, trackInfo.hasActiveSession) {
         buildList {
@@ -284,6 +304,7 @@ fun StandbyDashboard(
     }
 
     val pagerState = rememberPagerState(pageCount = { availablePages.size })
+    val expansionAnimatable = remember { Animatable(0f) }
 
     fun openPage(page: StandbyPage) {
         val index = availablePages.indexOf(page)
@@ -293,6 +314,44 @@ fun StandbyDashboard(
             }
         }
         isPagedMode = true
+        lastInteractionTimeMs = System.currentTimeMillis()
+        coroutineScope.launch {
+            expansionAnimatable.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = 620,
+                    easing = CubicBezierEasing(0.16f, 1.0f, 0.3f, 1.0f)
+                )
+            )
+        }
+    }
+
+    fun collapseToGrid() {
+        lastInteractionTimeMs = System.currentTimeMillis()
+        coroutineScope.launch {
+            expansionAnimatable.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(
+                    durationMillis = 560,
+                    easing = FastOutSlowInEasing
+                )
+            )
+            isPagedMode = false
+        }
+    }
+
+    val backDispatcherOwner = LocalOnBackPressedDispatcherOwner.current
+    if (backDispatcherOwner != null) {
+        BackHandler(enabled = true) {
+            when {
+                isClockEditorOpen -> isClockEditorOpen = false
+                isCalendarEditorOpen -> isCalendarEditorOpen = false
+                selectedCalendarDay != null -> selectedCalendarDay = null
+                isPagedMode -> collapseToGrid()
+                isEditMode -> isEditMode = false
+                else -> onDismissRequest()
+            }
+        }
     }
 
     val currentScreen = when {
@@ -379,23 +438,243 @@ fun StandbyDashboard(
                     scaleY = 0.98f + (0.02f * entranceProgress.value)
                 }
         ) {
-            // Top-left back chevron when in Paged Mode or Calendar Overlay Mode
-            if (currentScreen != DashboardScreen.GRID && !isEditMode) {
+            val progress = expansionAnimatable.value
+            val isExpandedOrAnimating = isPagedMode || progress > 0.005f
+
+            // 1. Grid Screen Layer (active when resting on grid or during expansion/collapse)
+            if (selectedCalendarDay == null && (!isPagedMode || progress < 0.995f)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            // Scales down gently and fades out during expansion; scales back up and fades in during collapse
+                            alpha = (1f - progress * 1.8f).coerceIn(0f, 1f)
+                            val s = 1.0f - (0.06f * progress)
+                            scaleX = s
+                            scaleY = s
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = if (isEditMode) 0.dp else 24.dp, bottom = 28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DashboardGridEngine(
+                            cards = localCards,
+                            currentTimeMs = currentTimeMs,
+                            weatherCity = preferences.weatherCity,
+                            weatherTempUnit = preferences.weatherTempUnit,
+                            showWeather = preferences.showWeather,
+                            showBattery = preferences.showBattery,
+                            clockStyleId = localClockStyle,
+                            clockColorId = localClockColorId,
+                            clockFullColor = localClockFullColor,
+                            calendarStyleId = localCalendarStyle,
+                            calendarColorId = localCalendarColorId,
+                            calendarFullColor = localCalendarFullColor,
+                            maskCalendar = preferences.calendarMaskLocked,
+                            isEditMode = isEditMode,
+                            notificationIcons = notificationIcons,
+                            onEnterEditMode = { isEditMode = true },
+                            onUpdateCards = { updated ->
+                                localCards = updated
+                                coroutineScope.launch {
+                                    preferencesRepo.setCustomLayout(DefaultCardLayouts.serialize(updated))
+                                }
+                            },
+                            onDoneEdit = { isEditMode = false },
+                            onResetDefaults = {
+                                val defaultList = when (preferences.activePreset) {
+                                    "Minimal" -> DefaultCardLayouts.getMinimalLayout()
+                                    "Media" -> DefaultCardLayouts.getMediaLayout()
+                                    else -> DefaultCardLayouts.getDashboardLayout()
+                                }
+                                localCards = defaultList
+                                coroutineScope.launch {
+                                    preferencesRepo.setCustomLayout("")
+                                }
+                            },
+                            onDoubleTap = onDismissRequest,
+                            onExpandClock = { openPage(StandbyPage.CLOCK) },
+                            onExpandMusic = { openPage(StandbyPage.MUSIC) },
+                            onExpandMonthCalendar = { openPage(StandbyPage.CALENDAR) },
+                            onSelectCalendarDay = { year, month, day ->
+                                selectedCalendarDay = CalendarDaySelection(year, month, day)
+                            }
+                        )
+
+                        // Clean, understated bottom ambient hint (no app name) - auto-hides with chrome
+                        if (!isEditMode && controlsAlpha > 0.01f) {
+                            Text(
+                                text = "Hold to customize · Double tap to exit",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextTertiary,
+                                fontSize = 11.sp,
+                                letterSpacing = 0.5.sp,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .alpha(0.35f * controlsAlpha)
+                                    .clickable(
+                                        enabled = controlsAlpha > 0.1f,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = onDismissRequest
+                                    )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 2. Full-Screen Paged Screen Layer (active when expanding, expanded, or collapsing back)
+            if (selectedCalendarDay == null && isExpandedOrAnimating) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 28.dp, bottom = 12.dp)
+                        .graphicsLayer {
+                            alpha = (progress * 2.2f).coerceIn(0f, 1f)
+                        }
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        userScrollEnabled = !isClockEditorOpen && !isCalendarEditorOpen && progress > 0.95f,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = if (availablePages.size > 1) 22.dp else 0.dp)
+                    ) { pageIndex ->
+                        when (availablePages.getOrNull(pageIndex)) {
+                            StandbyPage.CLOCK -> {
+                                BigClockView(
+                                    currentTimeMs = currentTimeMs,
+                                    weatherCity = preferences.weatherCity,
+                                    weatherTempUnit = preferences.weatherTempUnit,
+                                    showWeather = preferences.showWeather,
+                                    showBattery = preferences.showBattery,
+                                    clockStyleId = localClockStyle,
+                                    clockColorId = localClockColorId,
+                                    clockFullColor = localClockFullColor,
+                                    isClockEditorOpen = isClockEditorOpen,
+                                    expansionProgress = progress,
+                                    notificationIcons = notificationIcons,
+                                    onOpenClockEditor = { isClockEditorOpen = true },
+                                    onCloseClockEditor = { isClockEditorOpen = false },
+                                    onSelectClockStyle = { style ->
+                                        localClockStyle = style.id
+                                        coroutineScope.launch { preferencesRepo.setClockStyle(style.id) }
+                                    },
+                                    onSelectClockColor = { color ->
+                                        localClockColorId = color.id
+                                        coroutineScope.launch { preferencesRepo.setClockColorId(color.id) }
+                                    },
+                                    onToggleClockFullColor = { full ->
+                                        localClockFullColor = full
+                                        coroutineScope.launch { preferencesRepo.setClockFullColor(full) }
+                                    },
+                                    onDoubleTap = onDismissRequest,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            StandbyPage.CALENDAR -> {
+                                ExpandedMonthCalendarView(
+                                    onDayClick = { year, month, day ->
+                                        selectedCalendarDay = CalendarDaySelection(year, month, day)
+                                    },
+                                    isDimmed = isIdleDimmed,
+                                    maskTitle = preferences.calendarMaskLocked,
+                                    calendarStyleId = localCalendarStyle,
+                                    calendarColorId = localCalendarColorId,
+                                    calendarFullColor = localCalendarFullColor,
+                                    isCalendarEditorOpen = isCalendarEditorOpen,
+                                    expansionProgress = progress,
+                                    onOpenCalendarEditor = { isCalendarEditorOpen = true },
+                                    onCloseCalendarEditor = { isCalendarEditorOpen = false },
+                                    onSelectCalendarStyle = { style ->
+                                        localCalendarStyle = style.id
+                                        coroutineScope.launch { preferencesRepo.setCalendarStyle(style.id) }
+                                    },
+                                    onSelectCalendarColor = { color ->
+                                        localCalendarColorId = color.id
+                                        coroutineScope.launch { preferencesRepo.setCalendarColorId(color.id) }
+                                    },
+                                    onToggleCalendarFullColor = { full ->
+                                        localCalendarFullColor = full
+                                        coroutineScope.launch { preferencesRepo.setCalendarFullColor(full) }
+                                    },
+                                    onDoubleTap = onDismissRequest,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            StandbyPage.MUSIC -> {
+                                ExpandedMusicView(
+                                    trackInfo = trackInfo,
+                                    expansionProgress = progress,
+                                    onDoubleTap = onDismissRequest,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            null -> {}
+                        }
+                    }
+
+                    // Subtle pill page indicator at the bottom (auto-hides after 4.5s of inactivity, returns on touch)
+                    if (availablePages.size > 1 && !isClockEditorOpen && !isCalendarEditorOpen && controlsAlpha > 0.01f && progress > 0.85f) {
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 4.dp)
+                                .alpha(controlsAlpha * ((progress - 0.85f) / 0.15f).coerceIn(0f, 1f)),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            repeat(availablePages.size) { index ->
+                                val isCurrent = pagerState.currentPage == index
+                                Box(
+                                    modifier = Modifier
+                                        .height(4.dp)
+                                        .width(if (isCurrent) 16.dp else 4.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(
+                                            if (isCurrent) Color.White.copy(alpha = 0.85f)
+                                            else Color.White.copy(alpha = 0.25f)
+                                        )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Day Calendar Screen Layer
+            if (selectedCalendarDay != null) {
+                selectedCalendarDay?.let { selection ->
+                    ExpandedCalendarView(
+                        selection = selection,
+                        maskTitle = preferences.calendarMaskLocked,
+                        calendarColorId = localCalendarColorId,
+                        onDoubleTap = onDismissRequest,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 28.dp, bottom = 20.dp)
+                    )
+                }
+            }
+
+            // Top-left back chevron when in Paged Mode or Calendar Overlay Mode (auto-hides with chrome)
+            if ((isExpandedOrAnimating || selectedCalendarDay != null) && !isEditMode && controlsAlpha > 0.01f) {
                 IconButton(
                     onClick = {
-                        when (currentScreen) {
-                            DashboardScreen.DAY_CALENDAR -> {
-                                selectedCalendarDay = null
-                            }
-                            DashboardScreen.PAGED -> {
-                                isPagedMode = false
-                            }
-                            DashboardScreen.GRID -> {}
+                        if (selectedCalendarDay != null) {
+                            selectedCalendarDay = null
+                        } else {
+                            collapseToGrid()
                         }
                     },
+                    enabled = controlsAlpha > 0.1f && (progress > 0.3f || selectedCalendarDay != null),
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .alpha(0.6f)
+                        .alpha(0.6f * controlsAlpha * (if (selectedCalendarDay != null) 1f else progress))
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -405,221 +684,16 @@ fun StandbyDashboard(
                 }
             }
 
-            // Exit tap target (subtle X button) in top right
-            if (!isEditMode) {
+            // Exit tap target (subtle X button) in top right - auto-hides after 4.5s of inactivity
+            if (!isEditMode && controlsAlpha > 0.01f) {
                 IconButton(
                     onClick = onDismissRequest,
+                    enabled = controlsAlpha > 0.1f,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .alpha(0.6f)
+                        .alpha(0.6f * controlsAlpha)
                 ) {
                     Icon(Icons.Default.Close, contentDescription = "Close StandBy", tint = TextTertiary)
-                }
-            }
-
-            // Smooth crossfade transitions between Dashboard screens
-            AnimatedContent(
-                targetState = currentScreen,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) togetherWith
-                    fadeOut(animationSpec = tween(250, easing = FastOutSlowInEasing))
-                },
-                label = "DashboardScreenTransition"
-            ) { screen ->
-                when (screen) {
-                    DashboardScreen.DAY_CALENDAR -> {
-                        selectedCalendarDay?.let { selection ->
-                            ExpandedCalendarView(
-                                selection = selection,
-                                maskTitle = preferences.calendarMaskLocked,
-                                calendarColorId = localCalendarColorId,
-                                onDoubleTap = onDismissRequest,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(top = 28.dp, bottom = 20.dp)
-                            )
-                        }
-                    }
-                    DashboardScreen.PAGED -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 28.dp, bottom = 12.dp)
-                        ) {
-                            HorizontalPager(
-                                state = pagerState,
-                                userScrollEnabled = !isClockEditorOpen && !isCalendarEditorOpen,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(bottom = if (availablePages.size > 1) 22.dp else 0.dp)
-                            ) { pageIndex ->
-                                when (availablePages.getOrNull(pageIndex)) {
-                                    StandbyPage.CLOCK -> {
-                                        BigClockView(
-                                            currentTimeMs = currentTimeMs,
-                                            weatherCity = preferences.weatherCity,
-                                            weatherTempUnit = preferences.weatherTempUnit,
-                                            showWeather = preferences.showWeather,
-                                            showBattery = preferences.showBattery,
-                                            clockStyleId = localClockStyle,
-                                            clockColorId = localClockColorId,
-                                            clockFullColor = localClockFullColor,
-                                            isClockEditorOpen = isClockEditorOpen,
-                                            onOpenClockEditor = { isClockEditorOpen = true },
-                                            onCloseClockEditor = { isClockEditorOpen = false },
-                                            onSelectClockStyle = { style ->
-                                                localClockStyle = style.id
-                                                coroutineScope.launch { preferencesRepo.setClockStyle(style.id) }
-                                            },
-                                            onSelectClockColor = { color ->
-                                                localClockColorId = color.id
-                                                coroutineScope.launch { preferencesRepo.setClockColorId(color.id) }
-                                            },
-                                            onToggleClockFullColor = { full ->
-                                                localClockFullColor = full
-                                                coroutineScope.launch { preferencesRepo.setClockFullColor(full) }
-                                            },
-                                            onDoubleTap = onDismissRequest,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
-                                    StandbyPage.CALENDAR -> {
-                                        ExpandedMonthCalendarView(
-                                            onDayClick = { year, month, day ->
-                                                selectedCalendarDay = CalendarDaySelection(year, month, day)
-                                            },
-                                            isDimmed = isIdleDimmed,
-                                            maskTitle = preferences.calendarMaskLocked,
-                                            calendarStyleId = localCalendarStyle,
-                                            calendarColorId = localCalendarColorId,
-                                            calendarFullColor = localCalendarFullColor,
-                                            isCalendarEditorOpen = isCalendarEditorOpen,
-                                            onOpenCalendarEditor = { isCalendarEditorOpen = true },
-                                            onCloseCalendarEditor = { isCalendarEditorOpen = false },
-                                            onSelectCalendarStyle = { style ->
-                                                localCalendarStyle = style.id
-                                                coroutineScope.launch { preferencesRepo.setCalendarStyle(style.id) }
-                                            },
-                                            onSelectCalendarColor = { color ->
-                                                localCalendarColorId = color.id
-                                                coroutineScope.launch { preferencesRepo.setCalendarColorId(color.id) }
-                                            },
-                                            onToggleCalendarFullColor = { full ->
-                                                localCalendarFullColor = full
-                                                coroutineScope.launch { preferencesRepo.setCalendarFullColor(full) }
-                                            },
-                                            onDoubleTap = onDismissRequest,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
-                                    StandbyPage.MUSIC -> {
-                                        ExpandedMusicView(
-                                            trackInfo = trackInfo,
-                                            onDoubleTap = onDismissRequest,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
-                                    null -> {}
-                                }
-                            }
-
-                            // Subtle pill page indicator at the bottom (fades out after 10s of inactivity, returns on touch)
-                            if (availablePages.size > 1 && !isClockEditorOpen && !isCalendarEditorOpen && pageIndicatorAlpha > 0.01f) {
-                                Row(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomCenter)
-                                        .padding(bottom = 4.dp)
-                                        .alpha(pageIndicatorAlpha),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    repeat(availablePages.size) { index ->
-                                        val isCurrent = pagerState.currentPage == index
-                                        Box(
-                                            modifier = Modifier
-                                                .height(4.dp)
-                                                .width(if (isCurrent) 16.dp else 4.dp)
-                                                .clip(RoundedCornerShape(2.dp))
-                                                .background(
-                                                    if (isCurrent) Color.White.copy(alpha = 0.85f)
-                                                    else Color.White.copy(alpha = 0.25f)
-                                                )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    DashboardScreen.GRID -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = if (isEditMode) 0.dp else 24.dp, bottom = 28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            DashboardGridEngine(
-                                cards = localCards,
-                                currentTimeMs = currentTimeMs,
-                                weatherCity = preferences.weatherCity,
-                                weatherTempUnit = preferences.weatherTempUnit,
-                                showWeather = preferences.showWeather,
-                                showBattery = preferences.showBattery,
-                                clockStyleId = localClockStyle,
-                                clockColorId = localClockColorId,
-                                clockFullColor = localClockFullColor,
-                                calendarStyleId = localCalendarStyle,
-                                calendarColorId = localCalendarColorId,
-                                calendarFullColor = localCalendarFullColor,
-                                maskCalendar = preferences.calendarMaskLocked,
-                                isEditMode = isEditMode,
-                                onEnterEditMode = { isEditMode = true },
-                                onUpdateCards = { updated ->
-                                    localCards = updated
-                                    coroutineScope.launch {
-                                        preferencesRepo.setCustomLayout(DefaultCardLayouts.serialize(updated))
-                                    }
-                                },
-                                onDoneEdit = { isEditMode = false },
-                                onResetDefaults = {
-                                    val defaultList = when (preferences.activePreset) {
-                                        "Minimal" -> DefaultCardLayouts.getMinimalLayout()
-                                        "Media" -> DefaultCardLayouts.getMediaLayout()
-                                        else -> DefaultCardLayouts.getDashboardLayout()
-                                    }
-                                    localCards = defaultList
-                                    coroutineScope.launch {
-                                        preferencesRepo.setCustomLayout("")
-                                    }
-                                },
-                                onDoubleTap = onDismissRequest,
-                                onExpandClock = { openPage(StandbyPage.CLOCK) },
-                                onExpandMusic = { openPage(StandbyPage.MUSIC) },
-                                onExpandMonthCalendar = { openPage(StandbyPage.CALENDAR) },
-                                onSelectCalendarDay = { year, month, day ->
-                                    selectedCalendarDay = CalendarDaySelection(year, month, day)
-                                }
-                            )
-
-                            // Clean, understated bottom ambient hint (no app name)
-                            if (!isEditMode) {
-                                Text(
-                                    text = "Hold to customize · Double tap to exit",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = TextTertiary,
-                                    fontSize = 11.sp,
-                                    letterSpacing = 0.5.sp,
-                                    modifier = Modifier
-                                        .align(Alignment.BottomCenter)
-                                        .alpha(0.35f)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = onDismissRequest
-                                        )
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -803,9 +877,16 @@ fun StandbyDashboard(
 @Composable
 private fun ExpandedMusicView(
     trackInfo: MediaTrackInfo,
+    expansionProgress: Float = 1f,
     onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val albumGlideOffsetX = 240f * (1f - expansionProgress)
+    val albumScaleFactor = 0.58f + (0.42f * expansionProgress)
+    val albumAlpha = (0.35f + 0.65f * expansionProgress).coerceIn(0f, 1f)
+    val controlsTranslationXDp = 90f * (1f - expansionProgress)
+    val controlsContentAlpha = (expansionProgress * 2.0f - 1.0f).coerceIn(0f, 1f)
+
     Row(
         modifier = modifier
             .fillMaxSize()
@@ -818,11 +899,17 @@ private fun ExpandedMusicView(
         horizontalArrangement = Arrangement.spacedBy(32.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left Pane: Large Album Artwork (where Clock normally sits)
+        // Left Pane: Large Album Artwork (physically glides across from dashboard card position and expands)
         Box(
             modifier = Modifier
                 .weight(1.05f)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                .graphicsLayer {
+                    translationX = albumGlideOffsetX.dp.toPx()
+                    scaleX = albumScaleFactor
+                    scaleY = albumScaleFactor
+                    alpha = albumAlpha
+                },
             contentAlignment = Alignment.Center
         ) {
             if (trackInfo.artwork != null) {
@@ -856,12 +943,16 @@ private fun ExpandedMusicView(
             }
         }
 
-        // Right Pane: Expanded Track Details & Large Transport Controls
+        // Right Pane: Expanded Track Details & Large Transport Controls (glides in from right)
         Column(
             modifier = Modifier
                 .weight(0.95f)
                 .fillMaxHeight()
-                .padding(end = 12.dp),
+                .padding(end = 12.dp)
+                .graphicsLayer {
+                    translationX = controlsTranslationXDp.dp.toPx()
+                    alpha = controlsContentAlpha
+                },
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start
         ) {
@@ -1177,6 +1268,7 @@ private fun ExpandedMonthCalendarView(
     calendarColorId: String = "SIGNATURE_BLUE",
     calendarFullColor: Boolean = false,
     isCalendarEditorOpen: Boolean = false,
+    expansionProgress: Float = 1f,
     onOpenCalendarEditor: () -> Unit = {},
     onCloseCalendarEditor: () -> Unit = {},
     onSelectCalendarStyle: (CalendarStyle) -> Unit = {},
@@ -1228,6 +1320,10 @@ private fun ExpandedMonthCalendarView(
         label = "CalendarHelpTextAlpha"
     )
 
+    val calGlideOffsetX = 90f * (1f - expansionProgress)
+    val calScaleFactor = 0.85f + (0.15f * expansionProgress)
+    val calAlpha = (0.35f + 0.65f * expansionProgress).coerceIn(0f, 1f)
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -1258,7 +1354,13 @@ private fun ExpandedMonthCalendarView(
             verticalArrangement = if (isCalendarEditorOpen) Arrangement.SpaceBetween else Arrangement.Center
         ) {
             Column(
-                modifier = if (isCalendarEditorOpen) Modifier.weight(1f) else Modifier,
+                modifier = (if (isCalendarEditorOpen) Modifier.weight(1f) else Modifier)
+                    .graphicsLayer {
+                        translationX = calGlideOffsetX.dp.toPx()
+                        scaleX = calScaleFactor
+                        scaleY = calScaleFactor
+                        alpha = calAlpha
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -1275,7 +1377,7 @@ private fun ExpandedMonthCalendarView(
                         fontSize = if (isCalendarEditorOpen) 18.sp else 22.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
-                        color = resolvedColor
+                        color = if (calendarFullColor) resolvedColor else Color.White
                     )
                     if (!isCalendarEditorOpen) {
                         Text(
@@ -1300,7 +1402,7 @@ private fun ExpandedMonthCalendarView(
                             text = dayName,
                             fontSize = if (isCalendarEditorOpen) 12.sp else 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isWeekend || calendarFullColor) resolvedColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.45f),
+                            color = if (calendarFullColor) resolvedColor.copy(alpha = 0.85f) else if (isWeekend) resolvedColor.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.45f),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.weight(1f)
                         )
@@ -1401,6 +1503,8 @@ private fun BigClockView(
     clockColorId: String = "PURE_WHITE",
     clockFullColor: Boolean = false,
     isClockEditorOpen: Boolean = false,
+    expansionProgress: Float = 1f,
+    notificationIcons: List<StatusBarNotificationIcon> = emptyList(),
     onOpenClockEditor: () -> Unit = {},
     onCloseClockEditor: () -> Unit = {},
     onSelectClockStyle: (ClockStyle) -> Unit = {},
@@ -1448,6 +1552,12 @@ private fun BigClockView(
     val resolvedStyle = remember(clockStyleId) { ClockStyle.fromId(clockStyleId) }
     val resolvedColorOption = remember(clockColorId) { ClockColorOption.fromId(clockColorId) }
 
+    val clockGlideOffsetX = -140f * (1f - expansionProgress)
+    val clockScaleFactor = 0.74f + (0.26f * expansionProgress)
+    val clockAlpha = (0.35f + 0.65f * expansionProgress).coerceIn(0f, 1f)
+    val secondaryAlpha = (expansionProgress * 2.2f - 1.2f).coerceIn(0f, 1f)
+    val secondaryOffsetYDp = 20f * (1f - expansionProgress)
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -1477,9 +1587,15 @@ private fun BigClockView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = if (isClockEditorOpen) Arrangement.SpaceBetween else Arrangement.Center
         ) {
-            // Upper/Center Live Clock Preview Area
+            // Upper/Center Live Clock Preview Area (physically glides from dashboard card slot to center and scales up)
             Column(
-                modifier = if (isClockEditorOpen) Modifier.weight(1f) else Modifier,
+                modifier = (if (isClockEditorOpen) Modifier.weight(1f) else Modifier)
+                    .graphicsLayer {
+                        translationX = clockGlideOffsetX.dp.toPx()
+                        scaleX = clockScaleFactor
+                        scaleY = clockScaleFactor
+                        alpha = clockAlpha
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -1520,10 +1636,14 @@ private fun BigClockView(
                     )
                 }
 
-                // Weather and Battery (shown when not in compact editor mode)
+                // Weather and Battery (shown when not in compact editor mode, fades and slides in gently)
                 if (!isClockEditorOpen && (showWeather || showBattery)) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Row(
+                        modifier = Modifier.graphicsLayer {
+                            translationY = secondaryOffsetYDp.dp.toPx()
+                            alpha = secondaryAlpha
+                        },
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1577,6 +1697,18 @@ private fun BigClockView(
                             )
                         }
                     }
+                }
+
+                // Active status bar notification icons cluster at the bottom of the full screen clock view
+                if (!isClockEditorOpen && notificationIcons.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    NotificationIconsRow(
+                        icons = notificationIcons,
+                        modifier = Modifier.graphicsLayer {
+                            translationY = secondaryOffsetYDp.dp.toPx()
+                            alpha = secondaryAlpha
+                        }
+                    )
                 }
             }
 

@@ -6,6 +6,7 @@ data class TriggerPolicy(
     val minBatteryPercent: Int = 10,
     val dwellTimeMs: Long = 1000L,
     val cooldownDurationMs: Long = 2000L,
+    val exitDebounceMs: Long = 300L,
     val suppressDuringCalls: Boolean = true
 ) {
     fun canActivate(
