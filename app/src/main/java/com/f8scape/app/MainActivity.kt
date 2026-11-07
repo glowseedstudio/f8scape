@@ -73,8 +73,9 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.decorView.filterTouchesWhenObscured = true
 
-        // Keep screen on while testing / previewing
+        // Keep screen on while testing / previewing and bind hardware volume rocker to Music stream
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        volumeControlStream = android.media.AudioManager.STREAM_MUSIC
 
         windowPostureSource = WindowPostureSource(this)
 
@@ -167,6 +168,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onOpenPhotoCollection = {
                                         navController.navigate(Screen.PhotoCollection.route)
+                                    },
+                                    onPreviewOcarina = {
+                                        navController.navigate(Screen.StandbyPreview.createRoute("OCARINA"))
                                     }
                                 )
                             }
@@ -183,6 +187,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onPreviewPhotoFrame = {
                                         navController.navigate(Screen.StandbyPreview.createRoute("PHOTO_FRAME"))
+                                    },
+                                    onPreviewOcarina = {
+                                        navController.navigate(Screen.StandbyPreview.createRoute("OCARINA"))
                                     }
                                 )
                             }
@@ -215,6 +222,7 @@ class MainActivity : ComponentActivity() {
                             ) { backStackEntry ->
                                 val initialPageParam = backStackEntry.arguments?.getString("initialPage")
                                 val initialPage = when (initialPageParam) {
+                                    "OCARINA" -> StandbyPage.OCARINA
                                     "PHOTO_FRAME" -> StandbyPage.PHOTO_FRAME
                                     "WEATHER" -> StandbyPage.WEATHER
                                     "CALENDAR" -> StandbyPage.CALENDAR

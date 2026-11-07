@@ -23,6 +23,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.f8scape.app.theme.F8scapeTheme
 import com.f8scape.dashboard.DashboardActivity
 import com.f8scape.dashboard.StandbyDashboard
+import com.f8scape.dashboard.StandbyPage
 import com.f8scape.util.F8Log
 
 /**
@@ -77,9 +78,19 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
         removeStandbyOverlay()
     }
 
-    fun showStandbyOverlay() {
+    fun showStandbyOverlay(initialPage: StandbyPage? = null) {
         mainHandler.post {
-            if (overlayView != null) return@post
+            if (overlayView != null) {
+                try {
+                    val oldView = overlayView
+                    if (oldView != null && oldView.isAttachedToWindow) {
+                        windowManager?.removeView(oldView)
+                    }
+                } catch (e: Exception) {
+                    F8Log.e("CoverOverlayService", "Failed to remove previous overlay: ${e.message}")
+                }
+                overlayView = null
+            }
 
             try {
                 val composeView = ComposeView(this).apply {
@@ -91,7 +102,8 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                             StandbyDashboard(
                                 onDismissRequest = {
                                     removeStandbyOverlay()
-                                }
+                                },
+                                initialPage = initialPage
                             )
                         }
                     }
@@ -102,11 +114,36 @@ class CoverOverlayService : AccessibilityService(), LifecycleOwner, SavedStateRe
                 composeView.isFocusable = true
                 composeView.isFocusableInTouchMode = true
                 composeView.setOnKeyListener { _, keyCode, event ->
-                    if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-                        removeStandbyOverlay()
-                        true
-                    } else {
-                        false
+                    when (keyCode) {
+                        KeyEvent.KEYCODE_BACK -> {
+                            if (event.action == KeyEvent.ACTION_UP) {
+                                removeStandbyOverlay()
+                            }
+                            true
+                        }
+                        KeyEvent.KEYCODE_VOLUME_UP -> {
+                            if (event.action == KeyEvent.ACTION_DOWN) {
+                                val am = getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+                                am?.adjustStreamVolume(
+                                    android.media.AudioManager.STREAM_MUSIC,
+                                    android.media.AudioManager.ADJUST_RAISE,
+                                    android.media.AudioManager.FLAG_SHOW_UI
+                                )
+                            }
+                            true
+                        }
+                        KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                            if (event.action == KeyEvent.ACTION_DOWN) {
+                                val am = getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+                                am?.adjustStreamVolume(
+                                    android.media.AudioManager.STREAM_MUSIC,
+                                    android.media.AudioManager.ADJUST_LOWER,
+                                    android.media.AudioManager.FLAG_SHOW_UI
+                                )
+                            }
+                            true
+                        }
+                        else -> false
                     }
                 }
 

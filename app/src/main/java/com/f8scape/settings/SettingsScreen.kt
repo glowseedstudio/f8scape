@@ -7,7 +7,9 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,12 +28,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.f8scape.R
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -40,6 +47,7 @@ import com.f8scape.cards.CalendarStyle
 import com.f8scape.cards.ClockColorOption
 import com.f8scape.cards.ClockStyle
 import com.f8scape.cards.F8ClockFace
+import com.f8scape.dashboard.StandbyPage
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
 import com.f8scape.media.F8MediaNotificationListener
@@ -57,7 +65,8 @@ fun SettingsScreen(
     onNavigateBack: (() -> Unit)? = null,
     onOpenDiagnostics: () -> Unit = {},
     onOpenPhotoCollection: () -> Unit = {},
-    onPreviewPhotoFrame: () -> Unit = {}
+    onPreviewPhotoFrame: () -> Unit = {},
+    onPreviewOcarina: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -164,7 +173,11 @@ fun SettingsScreen(
 
             // Standby Automation Section
             item {
-                SectionCard(title = "Auto Standby") {
+                SectionCard(
+                    title = "Auto Standby",
+                    backgroundImageRes = R.drawable.bg_card_tent_standby,
+                    accentGlowColor = Color(0xFF2563EB)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -214,7 +227,11 @@ fun SettingsScreen(
 
             // Dashboard Presets Section
             item {
-                SectionCard(title = "Dashboard Preset") {
+                SectionCard(
+                    title = "Dashboard Preset",
+                    backgroundImageRes = R.drawable.bg_card_clock_styles,
+                    accentGlowColor = Color(0xFF6366F1)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -249,7 +266,11 @@ fun SettingsScreen(
 
             // Ambient Photo Frame Configuration Section
             item {
-                SectionCard(title = "Ambient Photo Frame") {
+                SectionCard(
+                    title = "Ambient Photo Frame",
+                    backgroundImageRes = R.drawable.bg_card_photo_frame,
+                    accentGlowColor = Color(0xFFEC4899)
+                ) {
                     val isPhotoFrameActive = preferences.activePreset == "Photo Frame"
 
                     // Quick Collection Manager shortcut card
@@ -636,7 +657,11 @@ fun SettingsScreen(
 
             // Power & Ambient Display Section
             item {
-                SectionCard(title = "Power & Ambient Display") {
+                SectionCard(
+                    title = "Power & Ambient Display",
+                    backgroundImageRes = R.drawable.bg_card_wallpaper,
+                    accentGlowColor = Color(0xFF10B981)
+                ) {
                     // Content Luminance Slider
                     Text("Content Brightness (White Numerals & Cards): ${(preferences.contentBrightness * 100).toInt()}%", style = MaterialTheme.typography.bodyLarge, color = Color.White)
                     Slider(
@@ -758,7 +783,11 @@ fun SettingsScreen(
                     }
                 }
 
-                SectionCard(title = "Clock Studio & Styles") {
+                SectionCard(
+                    title = "Clock Studio & Styles",
+                    backgroundImageRes = R.drawable.bg_card_clock_styles,
+                    accentGlowColor = Color(0xFF6366F1)
+                ) {
                     Text(
                         text = "Synced across Ambient Dashboard & Full-Screen Big Clock. Tip: Touch and hold the Big Clock in StandBy to open the live editor.",
                         style = MaterialTheme.typography.bodySmall,
@@ -898,7 +927,11 @@ fun SettingsScreen(
                 val activeCalStyle = remember(localCalStyleId) { CalendarStyle.fromId(localCalStyleId) }
                 val activeCalColor = remember(localCalColorId) { ClockColorOption.fromCalendarDefault(localCalColorId) }
 
-                SectionCard(title = "Calendar Studio & Styles") {
+                SectionCard(
+                    title = "Calendar Studio & Styles",
+                    backgroundImageRes = R.drawable.bg_card_calendar,
+                    accentGlowColor = Color(0xFFF59E0B)
+                ) {
                     Text(
                         text = "Synced across Home Screen Calendar Card & Full-Screen Calendar. Tip: Touch and hold the Full-Screen Calendar in StandBy to open the live editor.",
                         style = MaterialTheme.typography.bodySmall,
@@ -1010,7 +1043,11 @@ fun SettingsScreen(
 
             // Native Cards & Integrations Section
             item {
-                SectionCard(title = "Native Cards & Integrations") {
+                SectionCard(
+                    title = "Native Cards & Integrations",
+                    backgroundImageRes = R.drawable.bg_card_weather,
+                    accentGlowColor = Color(0xFF38BDF8)
+                ) {
                     // Weather City
                     var cityInput by remember(preferences.weatherCity) { mutableStateOf(preferences.weatherCity) }
                     var localTempUnit by remember(preferences.weatherTempUnit) { mutableStateOf(preferences.weatherTempUnit) }
@@ -1106,6 +1143,93 @@ fun SettingsScreen(
                         Switch(
                             checked = preferences.enableWeatherPage,
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setEnableWeatherPage(it) } },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    // Ocarina of Time Page Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Ocarina of Time Songs Page", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text(
+                                "Adds an interactive Zelda Ocarina songbook and instrument page when swiping in full-screen StandBy mode",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (CoverOverlayService.isServiceRunning) {
+                                    Surface(
+                                        onClick = {
+                                            CoverOverlayService.activeInstance?.showStandbyOverlay(StandbyPage.OCARINA)
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = AccentBlue.copy(alpha = 0.22f),
+                                        border = BorderStroke(1.dp, AccentBlue.copy(alpha = 0.7f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Layers,
+                                                contentDescription = null,
+                                                tint = AccentBlue,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                            Text(
+                                                text = "Open Ocarina Overlay",
+                                                fontSize = 12.sp,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Surface(
+                                    onClick = onPreviewOcarina,
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (CoverOverlayService.isServiceRunning) Color(0xFF26262A) else AccentBlue.copy(alpha = 0.22f),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (CoverOverlayService.isServiceRunning) Color.White.copy(alpha = 0.15f) else AccentBlue.copy(alpha = 0.7f)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.MusicNote,
+                                            contentDescription = null,
+                                            tint = if (CoverOverlayService.isServiceRunning) TextSecondary else AccentBlue,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Text(
+                                            text = if (CoverOverlayService.isServiceRunning) "Full-Screen View" else "Open Ocarina (Use Outside Tent)",
+                                            fontSize = 12.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Switch(
+                            checked = preferences.enableOcarinaPage,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setEnableOcarinaPage(it) } },
                             colors = defaultSwitchColors
                         )
                     }
@@ -1237,7 +1361,11 @@ fun SettingsScreen(
                 var localAutoOffMinutes by remember(preferences.autoOffMinutes) { mutableIntStateOf(preferences.autoOffMinutes) }
                 val activeProfile = remember(localPowerProfile) { com.f8scape.power.PowerProfile.fromId(localPowerProfile) }
 
-                SectionCard(title = "Power, Battery & Resilience") {
+                SectionCard(
+                    title = "Power, Battery & Resilience",
+                    backgroundImageRes = R.drawable.bg_card_tent_standby,
+                    accentGlowColor = Color(0xFF10B981)
+                ) {
                     Text("Power Profile", style = MaterialTheme.typography.bodyLarge, color = Color.White)
                     Text(activeProfile.description, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     Spacer(modifier = Modifier.height(10.dp))
@@ -1347,7 +1475,11 @@ fun SettingsScreen(
 
             // System Integration & Services Section
             item {
-                SectionCard(title = "System Integration & Services") {
+                SectionCard(
+                    title = "System Integration & Services",
+                    backgroundImageRes = R.drawable.bg_card_ocarina,
+                    accentGlowColor = Color(0xFFF59E0B)
+                ) {
                     val isA11yRunning = CoverOverlayService.isServiceRunning
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1527,7 +1659,11 @@ fun SettingsScreen(
                 val updatePrefs = remember { AppUpdatePreferences(context) }
                 var autoCheckEnabled by remember { mutableStateOf(updatePrefs.isAutoCheckEnabled) }
 
-                SectionCard(title = "App Updates") {
+                SectionCard(
+                    title = "App Updates",
+                    backgroundImageRes = R.drawable.bg_card_wallpaper,
+                    accentGlowColor = Color(0xFF2563EB)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1585,7 +1721,12 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun SectionCard(
+    title: String,
+    @DrawableRes backgroundImageRes: Int? = null,
+    accentGlowColor: Color = Color.Transparent,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title.uppercase(),
@@ -1595,12 +1736,76 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
             letterSpacing = 1.2.sp,
             modifier = Modifier.padding(start = 14.dp, bottom = 8.dp)
         )
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF161618),
-            shape = RoundedCornerShape(22.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color(0xFF101114))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.20f),
+                            if (accentGlowColor != Color.Transparent) accentGlowColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
+                            Color.White.copy(alpha = 0.03f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(22.dp)
+                )
         ) {
+            if (backgroundImageRes != null) {
+                Image(
+                    painter = painterResource(id = backgroundImageRes),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xD908090C), // ~85% dark on left for text readability
+                                Color(0x6008090C), // ~37% in center
+                                Color(0x1808090C)  // ~10% on right for rich vivid artwork
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0x15000000),
+                                Color(0x60000000)
+                            )
+                        )
+                    )
+            )
+
+            if (accentGlowColor != Color.Transparent) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    accentGlowColor.copy(alpha = 0.16f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(Float.POSITIVE_INFINITY, 0f),
+                                radius = 600f
+                            )
+                        )
+                    )
+            }
+
             Column(
                 modifier = Modifier.padding(18.dp)
             ) {
