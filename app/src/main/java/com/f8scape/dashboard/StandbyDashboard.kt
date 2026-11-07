@@ -86,6 +86,7 @@ import com.f8scape.cards.WeatherInfo
 import com.f8scape.cards.WeatherIntelligenceView
 import com.f8scape.photoframe.PhotoFrameView
 import com.f8scape.ocarina.OcarinaSongsView
+import com.f8scape.ocarina.TriforceScreensaverView
 import com.f8scape.data.PreferencesRepository
 import com.f8scape.data.UserPreferences
 import com.f8scape.media.MediaPlaybackRepository
@@ -113,7 +114,8 @@ enum class StandbyPage {
     WEATHER,
     MUSIC,
     PHOTO_FRAME,
-    OCARINA
+    OCARINA,
+    SCREENSAVER
 }
 
 private enum class DashboardScreen {
@@ -304,7 +306,7 @@ fun StandbyDashboard(
         }
     }
 
-    val availablePages = remember(localCards, trackInfo.hasActiveSession, preferences.enableWeatherPage, preferences.enablePhotoFramePage, preferences.enableOcarinaPage, initialPage) {
+    val availablePages = remember(localCards, trackInfo.hasActiveSession, preferences.enableWeatherPage, preferences.enablePhotoFramePage, preferences.enableOcarinaPage, preferences.enableScreensaverPage, initialPage) {
         buildList {
             add(StandbyPage.CLOCK)
             if (localCards.any { it.type == CardType.CALENDAR }) {
@@ -321,6 +323,9 @@ fun StandbyDashboard(
             }
             if (preferences.enableOcarinaPage || initialPage == StandbyPage.OCARINA) {
                 add(StandbyPage.OCARINA)
+            }
+            if (preferences.enableScreensaverPage || initialPage == StandbyPage.SCREENSAVER) {
+                add(StandbyPage.SCREENSAVER)
             }
         }
     }
@@ -479,10 +484,14 @@ fun StandbyDashboard(
                 )
             }
     ) {
+        val isScreensaverPreset = preferences.activePreset in listOf("Screensaver", "Triforce", "Triforce Screensaver")
         val isPhotoFrameActive = initialPage == null && preferences.activePreset == "Photo Frame" && !(trackInfo.isPlaying && preferences.photoFrameMusicBehavior == "SWITCH_TO_MEDIA")
+        val isScreensaverPresetActive = initialPage == null && isScreensaverPreset
         val progress = expansionAnimatable.value
         val isExpandedOrAnimating = isPagedMode || progress > 0.005f
         val isOcarinaCurrentPage = isExpandedOrAnimating && availablePages.getOrNull(pagerState.currentPage) == StandbyPage.OCARINA
+        val isScreensaverCurrentPage = isExpandedOrAnimating && availablePages.getOrNull(pagerState.currentPage) == StandbyPage.SCREENSAVER
+        val isSpecialCleanMode = isOcarinaCurrentPage || isScreensaverCurrentPage || isScreensaverPresetActive
 
         if (isPhotoFrameActive) {
             PhotoFrameView(
@@ -493,18 +502,24 @@ fun StandbyDashboard(
                 onTap = { lastInteractionTimeMs = System.currentTimeMillis() },
                 modifier = Modifier.fillMaxSize()
             )
+        } else if (isScreensaverPresetActive) {
+            TriforceScreensaverView(
+                onDoubleTap = onDismissRequest,
+                showStones = preferences.screensaverShowStones,
+                modifier = Modifier.fillMaxSize()
+            )
         } else {
             // Ken Burns Ambient Artwork / Wallpaper Background (Static when Eco profile or Battery Saver active)
-            // Suppressed on Ocarina screen so the sacred 3D Triforce wallpaper is cleanly isolated
-            val showAmbientWallpaper = !isOcarinaCurrentPage && preferences.kenBurnsEnabled && !isEcoModeActive && activeBackgroundArtwork != null
+            // Suppressed on Ocarina & Screensaver screens so the sacred 3D Triforce wallpaper is cleanly isolated
+            val showAmbientWallpaper = !isSpecialCleanMode && preferences.kenBurnsEnabled && !isEcoModeActive && activeBackgroundArtwork != null
             KenBurnsBackground(
-                artwork = if (isOcarinaCurrentPage) null else activeBackgroundArtwork,
+                artwork = if (isSpecialCleanMode) null else activeBackgroundArtwork,
                 isEnabled = showAmbientWallpaper
             )
         }
 
         // Master window dimming scrim (active during music playback or when wallpaper is disabled)
-        if (!isPhotoFrameActive && !isOcarinaCurrentPage && preferences.screenDimLevel < 0.8f && (activeBackgroundArtwork != null || !preferences.showWallpaperBackground)) {
+        if (!isPhotoFrameActive && !isSpecialCleanMode && preferences.screenDimLevel < 0.8f && (activeBackgroundArtwork != null || !preferences.showWallpaperBackground)) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -516,7 +531,7 @@ fun StandbyDashboard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(if (isOcarinaCurrentPage) 0.dp else 18.dp)
+                .padding(if (isSpecialCleanMode) 0.dp else 18.dp)
                 .offset { animatedBurnInOffset }
                 .graphicsLayer {
                     alpha = localContentBrightness * entranceProgress.value
@@ -526,7 +541,7 @@ fun StandbyDashboard(
         ) {
 
             // 1. Grid Screen Layer (active when resting on grid or during expansion/collapse)
-            if (!isPhotoFrameActive && selectedCalendarDay == null && notifProgress < 0.995f && (!isPagedMode || progress < 0.995f)) {
+            if (!isPhotoFrameActive && !isScreensaverPresetActive && selectedCalendarDay == null && notifProgress < 0.995f && (!isPagedMode || progress < 0.995f)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -637,13 +652,13 @@ fun StandbyDashboard(
             }
 
             // 2. Full-Screen Paged Screen Layer (active when expanding, expanded, or collapsing back)
-            if (!isPhotoFrameActive && selectedCalendarDay == null && notifProgress < 0.995f && isExpandedOrAnimating) {
+            if (!isPhotoFrameActive && !isScreensaverPresetActive && selectedCalendarDay == null && notifProgress < 0.995f && isExpandedOrAnimating) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(
-                            top = if (isOcarinaCurrentPage) 0.dp else 28.dp,
-                            bottom = if (isOcarinaCurrentPage) 0.dp else 12.dp
+                            top = if (isSpecialCleanMode) 0.dp else 28.dp,
+                            bottom = if (isSpecialCleanMode) 0.dp else 12.dp
                         )
                         .graphicsLayer {
                             alpha = (progress * 2.2f * (1f - notifProgress * 1.8f)).coerceIn(0f, 1f)
@@ -657,7 +672,7 @@ fun StandbyDashboard(
                         userScrollEnabled = !isClockEditorOpen && !isCalendarEditorOpen && progress > 0.95f && !isNotificationVisible,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(bottom = if (isOcarinaCurrentPage) 0.dp else if (availablePages.size > 1) 22.dp else 0.dp)
+                            .padding(bottom = if (isSpecialCleanMode) 0.dp else if (availablePages.size > 1) 22.dp else 0.dp)
                     ) { pageIndex ->
                         when (availablePages.getOrNull(pageIndex)) {
                             StandbyPage.CLOCK -> {
@@ -758,14 +773,22 @@ fun StandbyDashboard(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
+                            StandbyPage.SCREENSAVER -> {
+                                TriforceScreensaverView(
+                                    onDoubleTap = onDismissRequest,
+                                    showStones = preferences.screensaverShowStones,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                             null -> {}
                         }
                     }
 
                     // Subtle pill page indicator at the bottom (auto-hides after 4.5s of inactivity, returns on touch)
-                    // Hide when on Ocarina screen so it never overlaps or leaks below the Hyrule Jukebox pill
+                    // Hide when on Ocarina or Screensaver screen so it never overlaps or leaks below the content
                     val isOcarinaActive = availablePages.getOrNull(pagerState.currentPage) == StandbyPage.OCARINA
-                    if (availablePages.size > 1 && !isOcarinaActive && !isClockEditorOpen && !isCalendarEditorOpen && controlsAlpha > 0.01f && progress > 0.85f) {
+                    val isScreensaverPageActive = availablePages.getOrNull(pagerState.currentPage) == StandbyPage.SCREENSAVER
+                    if (availablePages.size > 1 && !isOcarinaActive && !isScreensaverPageActive && !isClockEditorOpen && !isCalendarEditorOpen && controlsAlpha > 0.01f && progress > 0.85f) {
                         Row(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)

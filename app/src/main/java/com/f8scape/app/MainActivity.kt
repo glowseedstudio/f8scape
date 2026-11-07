@@ -171,6 +171,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onPreviewOcarina = {
                                         navController.navigate(Screen.StandbyPreview.createRoute("OCARINA"))
+                                    },
+                                    onPreviewScreensaver = {
+                                        navController.navigate(Screen.StandbyPreview.createRoute("SCREENSAVER"))
                                     }
                                 )
                             }
@@ -190,6 +193,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onPreviewOcarina = {
                                         navController.navigate(Screen.StandbyPreview.createRoute("OCARINA"))
+                                    },
+                                    onPreviewScreensaver = {
+                                        navController.navigate(Screen.StandbyPreview.createRoute("SCREENSAVER"))
                                     }
                                 )
                             }
@@ -222,6 +228,7 @@ class MainActivity : ComponentActivity() {
                             ) { backStackEntry ->
                                 val initialPageParam = backStackEntry.arguments?.getString("initialPage")
                                 val initialPage = when (initialPageParam) {
+                                    "SCREENSAVER", "TRIFORCE" -> StandbyPage.SCREENSAVER
                                     "OCARINA" -> StandbyPage.OCARINA
                                     "PHOTO_FRAME" -> StandbyPage.PHOTO_FRAME
                                     "WEATHER" -> StandbyPage.WEATHER

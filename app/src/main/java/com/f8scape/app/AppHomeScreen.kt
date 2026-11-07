@@ -66,7 +66,8 @@ fun AppHomeScreen(
     onOpenSettings: () -> Unit,
     onOpenSetup: () -> Unit,
     onOpenPhotoCollection: () -> Unit = {},
-    onPreviewOcarina: () -> Unit = {}
+    onPreviewOcarina: () -> Unit = {},
+    onPreviewScreensaver: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -668,6 +669,105 @@ fun AppHomeScreen(
                         onCheckedChange = { active ->
                             coroutineScope.launch {
                                 preferencesRepository.setEnableOcarinaPage(active)
+                            }
+                        },
+                        colors = customSwitchColors
+                    )
+                }
+            }
+        }
+
+        // Optional Enhancement 6: Pure Triforce Screensaver Mode
+        item {
+            val isScreensaverPageActive = preferences.enableScreensaverPage
+            val isPresetScreensaver = preferences.activePreset in listOf("Triforce", "Screensaver", "Triforce Screensaver")
+
+            OptionalFeatureCard(
+                title = "Triforce Screensaver",
+                subtitle = if (isPresetScreensaver) {
+                    "Active Preset · Automatically enters the 3D spinning Triforce screensaver with safe OLED orbital shifting & idle dimming"
+                } else if (isScreensaverPageActive) {
+                    "Enabled · 3D spinning Triforces with safe OLED orbital shifting ready in full-screen StandBy"
+                } else {
+                    "Disabled · Enable to add the ambient 3D Triforce screensaver to StandBy"
+                },
+                icon = Icons.Default.Shield,
+                isEnabled = isPresetScreensaver || isScreensaverPageActive,
+                statusText = if (isPresetScreensaver) "Active Preset" else if (isScreensaverPageActive) "Active Page" else "Disabled",
+                actionButtonLabel = if (CoverOverlayService.isServiceRunning) "Launch Screensaver" else "Preview",
+                backgroundImageRes = R.drawable.bg_card_ocarina,
+                accentGlowColor = Color(0xFFFFD700),
+                onActionClick = {
+                    if (CoverOverlayService.isServiceRunning) {
+                        CoverOverlayService.activeInstance?.showStandbyOverlay(StandbyPage.SCREENSAVER)
+                    } else {
+                        onPreviewScreensaver()
+                    }
+                }
+            ) {
+                HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Full-Screen Screensaver Page", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Swipe to the 3D Triforce screensaver in StandBy mode", fontSize = 12.sp, color = TextSecondary)
+                    }
+                    Switch(
+                        checked = isScreensaverPageActive,
+                        onCheckedChange = { active ->
+                            coroutineScope.launch {
+                                preferencesRepository.setEnableScreensaverPage(active)
+                            }
+                        },
+                        colors = customSwitchColors
+                    )
+                }
+
+                HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Set as Default Preset", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Opens directly into the Triforce screensaver in tent posture", fontSize = 12.sp, color = TextSecondary)
+                    }
+                    Switch(
+                        checked = isPresetScreensaver,
+                        onCheckedChange = { setAsPreset ->
+                            coroutineScope.launch {
+                                preferencesRepository.setActivePreset(if (setAsPreset) "Triforce" else "Dashboard")
+                            }
+                        },
+                        colors = customSwitchColors
+                    )
+                }
+
+                HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Show Three Spiritual Stones", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Display authentic 3D Kokiri Emerald, Goron Ruby, and Zora Sapphire", fontSize = 12.sp, color = TextSecondary)
+                    }
+                    Switch(
+                        checked = preferences.screensaverShowStones,
+                        onCheckedChange = { showStones ->
+                            coroutineScope.launch {
+                                preferencesRepository.setScreensaverShowStones(showStones)
                             }
                         },
                         colors = customSwitchColors

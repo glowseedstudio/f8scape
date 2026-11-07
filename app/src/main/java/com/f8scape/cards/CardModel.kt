@@ -51,6 +51,7 @@ object DefaultCardLayouts {
                 "Minimal" -> getMinimalLayout()
                 "Media" -> getMediaLayout()
                 "Photo Frame" -> getPhotoFrameLayout()
+                "Triforce", "Screensaver", "Triforce Screensaver" -> getMinimalLayout()
                 else -> getDashboardLayout()
             }
         }

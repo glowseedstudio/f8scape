@@ -66,7 +66,8 @@ fun SettingsScreen(
     onOpenDiagnostics: () -> Unit = {},
     onOpenPhotoCollection: () -> Unit = {},
     onPreviewPhotoFrame: () -> Unit = {},
-    onPreviewOcarina: () -> Unit = {}
+    onPreviewOcarina: () -> Unit = {},
+    onPreviewScreensaver: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -232,34 +233,50 @@ fun SettingsScreen(
                     backgroundImageRes = R.drawable.bg_card_clock_styles,
                     accentGlowColor = Color(0xFF6366F1)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        PresetChip(
-                            label = "Dashboard",
-                            isSelected = preferences.activePreset == "Dashboard",
-                            onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Dashboard") } },
-                            modifier = Modifier.weight(1f)
-                        )
-                        PresetChip(
-                            label = "Minimal",
-                            isSelected = preferences.activePreset == "Minimal",
-                            onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Minimal") } },
-                            modifier = Modifier.weight(1f)
-                        )
-                        PresetChip(
-                            label = "Media",
-                            isSelected = preferences.activePreset == "Media",
-                            onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Media") } },
-                            modifier = Modifier.weight(1f)
-                        )
-                        PresetChip(
-                            label = "Photo Frame",
-                            isSelected = preferences.activePreset == "Photo Frame",
-                            onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Photo Frame") } },
-                            modifier = Modifier.weight(1.15f)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            PresetChip(
+                                label = "Dashboard",
+                                isSelected = preferences.activePreset == "Dashboard",
+                                onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Dashboard") } },
+                                modifier = Modifier.weight(1f)
+                            )
+                            PresetChip(
+                                label = "Minimal",
+                                isSelected = preferences.activePreset == "Minimal",
+                                onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Minimal") } },
+                                modifier = Modifier.weight(1f)
+                            )
+                            PresetChip(
+                                label = "Media",
+                                isSelected = preferences.activePreset == "Media",
+                                onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Media") } },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            PresetChip(
+                                label = "Photo Frame",
+                                isSelected = preferences.activePreset == "Photo Frame",
+                                onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Photo Frame") } },
+                                modifier = Modifier.weight(1f)
+                            )
+                            PresetChip(
+                                label = "Triforce Screensaver",
+                                isSelected = preferences.activePreset in listOf("Triforce", "Screensaver", "Triforce Screensaver"),
+                                onClick = { coroutineScope.launch { preferencesRepository.setActivePreset("Triforce") } },
+                                modifier = Modifier.weight(1.35f)
+                            )
+                        }
                     }
                 }
             }
@@ -1232,6 +1249,115 @@ fun SettingsScreen(
                             onCheckedChange = { coroutineScope.launch { preferencesRepository.setEnableOcarinaPage(it) } },
                             colors = defaultSwitchColors
                         )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))
+
+                    // Triforce Screensaver Page Toggle & Preview
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Triforce Screensaver Page", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                            Text(
+                                "Adds a pure 3D spinning Triforce screensaver with safe OLED orbital shifting and idle dimming in StandBy",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (CoverOverlayService.isServiceRunning) {
+                                    Surface(
+                                        onClick = {
+                                            CoverOverlayService.activeInstance?.showStandbyOverlay(StandbyPage.SCREENSAVER)
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = Color(0xFF1E2818),
+                                        border = BorderStroke(1.dp, Color(0xFFFFD700).copy(alpha = 0.45f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Layers,
+                                                contentDescription = null,
+                                                tint = Color(0xFFFFD700),
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                            Text(
+                                                text = "Open Screensaver Overlay",
+                                                fontSize = 12.sp,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Surface(
+                                    onClick = onPreviewScreensaver,
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color(0xFFFFD700).copy(alpha = 0.18f),
+                                    border = BorderStroke(1.dp, Color(0xFFFFD700).copy(alpha = 0.55f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Shield,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFFD700),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Text(
+                                            text = "Preview Screensaver",
+                                            fontSize = 12.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Switch(
+                            checked = preferences.enableScreensaverPage,
+                            onCheckedChange = { coroutineScope.launch { preferencesRepository.setEnableScreensaverPage(it) } },
+                            colors = defaultSwitchColors
+                        )
+                    }
+
+                    if (preferences.enableScreensaverPage) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Show Three Spiritual Stones", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                                Text(
+                                    "Display authentic 3D Kokiri Emerald, Goron Ruby, and Zora Sapphire",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                            }
+                            Switch(
+                                checked = preferences.screensaverShowStones,
+                                onCheckedChange = { coroutineScope.launch { preferencesRepository.setScreensaverShowStones(it) } },
+                                colors = defaultSwitchColors
+                            )
+                        }
                     }
 
                     HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))

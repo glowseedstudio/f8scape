@@ -45,6 +45,8 @@ data class UserPreferences(
     val enableWeatherPage: Boolean = false,
     val enablePhotoFramePage: Boolean = true,
     val enableOcarinaPage: Boolean = true,
+    val enableScreensaverPage: Boolean = true,
+    val screensaverShowStones: Boolean = true,
     val photoFrameSourceType: String = "PHOTOS", // "PHOTOS" or "FOLDER"
     val photoFrameSelectedUrisSerialized: String = "",
     val photoFrameFolderUri: String = "",
@@ -94,6 +96,8 @@ class PreferencesRepository(
         val ENABLE_WEATHER_PAGE = booleanPreferencesKey("enable_weather_page")
         val ENABLE_PHOTO_FRAME_PAGE = booleanPreferencesKey("enable_photo_frame_page")
         val ENABLE_OCARINA_PAGE = booleanPreferencesKey("enable_ocarina_page")
+        val ENABLE_SCREENSAVER_PAGE = booleanPreferencesKey("enable_screensaver_page")
+        val SCREENSAVER_SHOW_STONES = booleanPreferencesKey("screensaver_show_stones")
         val PHOTO_FRAME_SOURCE_TYPE = stringPreferencesKey("photo_frame_source_type")
         val PHOTO_FRAME_SELECTED_URIS = stringPreferencesKey("photo_frame_selected_uris")
         val PHOTO_FRAME_FOLDER_URI = stringPreferencesKey("photo_frame_folder_uri")
@@ -149,6 +153,8 @@ class PreferencesRepository(
                 enableWeatherPage = preferences[PreferencesKeys.ENABLE_WEATHER_PAGE] ?: false,
                 enablePhotoFramePage = preferences[PreferencesKeys.ENABLE_PHOTO_FRAME_PAGE] ?: true,
                 enableOcarinaPage = preferences[PreferencesKeys.ENABLE_OCARINA_PAGE] ?: true,
+                enableScreensaverPage = preferences[PreferencesKeys.ENABLE_SCREENSAVER_PAGE] ?: true,
+                screensaverShowStones = preferences[PreferencesKeys.SCREENSAVER_SHOW_STONES] ?: true,
                 photoFrameSourceType = preferences[PreferencesKeys.PHOTO_FRAME_SOURCE_TYPE] ?: "PHOTOS",
                 photoFrameSelectedUrisSerialized = preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] ?: "",
                 photoFrameFolderUri = preferences[PreferencesKeys.PHOTO_FRAME_FOLDER_URI] ?: "",
@@ -344,6 +350,18 @@ class PreferencesRepository(
     suspend fun setEnableOcarinaPage(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.ENABLE_OCARINA_PAGE] = enabled
+        }
+    }
+
+    suspend fun setEnableScreensaverPage(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ENABLE_SCREENSAVER_PAGE] = enabled
+        }
+    }
+
+    suspend fun setScreensaverShowStones(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SCREENSAVER_SHOW_STONES] = show
         }
     }
 
