@@ -773,6 +773,52 @@ fun AppHomeScreen(
                         colors = customSwitchColors
                     )
                 }
+
+                HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Keep Bright During Motion", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Only start 10s dim timer after stones stop moving and awakening finishes", fontSize = 12.sp, color = TextSecondary)
+                    }
+                    Switch(
+                        checked = preferences.screensaverDimAfterMotion,
+                        onCheckedChange = { dimAfterMotion ->
+                            coroutineScope.launch {
+                                preferencesRepository.setScreensaverDimAfterMotion(dimAfterMotion)
+                            }
+                        },
+                        colors = customSwitchColors
+                    )
+                }
+
+                HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Ocarina of Time Sequence", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Summon 3D Ocarina after stones settle; tap to play Song of Time & awaken Triforce", fontSize = 12.sp, color = TextSecondary)
+                    }
+                    Switch(
+                        checked = preferences.screensaverOcarinaStep,
+                        onCheckedChange = { ocarinaStep ->
+                            coroutineScope.launch {
+                                preferencesRepository.setScreensaverOcarinaStep(ocarinaStep)
+                            }
+                        },
+                        colors = customSwitchColors
+                    )
+                }
             }
         }
 

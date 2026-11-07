@@ -506,6 +506,8 @@ fun StandbyDashboard(
             TriforceScreensaverView(
                 onDoubleTap = onDismissRequest,
                 showStones = preferences.screensaverShowStones,
+                dimAfterMotion = preferences.screensaverDimAfterMotion,
+                ocarinaStep = preferences.screensaverOcarinaStep,
                 modifier = Modifier.fillMaxSize()
             )
         } else {
@@ -777,6 +779,8 @@ fun StandbyDashboard(
                                 TriforceScreensaverView(
                                     onDoubleTap = onDismissRequest,
                                     showStones = preferences.screensaverShowStones,
+                                    dimAfterMotion = preferences.screensaverDimAfterMotion,
+                                    ocarinaStep = preferences.screensaverOcarinaStep,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
@@ -1072,7 +1076,9 @@ fun StandbyDashboard(
         }
 
         // 10-second idle dimming scrim (dims screen down to 30% brightness = 70% black scrim, saving OLED power)
-        if (idleDimAlpha > 0.005f) {
+        // Suppressed on Screensaver and Ocarina pages/presets because they manage their own
+        // motion-aware and note-aware OLED dimming timers without premature or stacked dimming.
+        if (!isSpecialCleanMode && idleDimAlpha > 0.005f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

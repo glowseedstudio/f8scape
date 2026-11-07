@@ -1,6 +1,10 @@
 package com.f8scape.ocarina
 
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.media.SoundPool
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -31,17 +35,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +66,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -66,7 +75,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.f8scape.R
+import com.f8scape.util.F8Log
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
@@ -99,8 +111,68 @@ import kotlin.random.Random
 fun TriforceScreensaverView(
     onDoubleTap: () -> Unit,
     modifier: Modifier = Modifier,
-    showStones: Boolean = true
+    showStones: Boolean = true,
+    dimAfterMotion: Boolean = true,
+    ocarinaStep: Boolean = false
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var ocarinaMediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var isOcarinaActive by remember { mutableStateOf(false) }
+    var hasOcarinaBeenTapped by remember { mutableStateOf(false) }
+    var isSongOfTimePlaying by remember { mutableStateOf(false) }
+    val ocarinaAlphaAnimatable = remember { Animatable(0f) }
+    var ocarinaTimeoutJob by remember { mutableStateOf<Job?>(null) }
+    var activationJob by remember { mutableStateOf<Job?>(null) }
+    val activationAnimatable = remember { Animatable(0f) }
+
+    val soundPool = remember {
+        SoundPool.Builder()
+            .setMaxStreams(2)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .build()
+    }
+    var activationPingSoundId by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        try {
+            activationPingSoundId = soundPool.load(context, R.raw.triforce_activation_ping, 1)
+        } catch (e: Exception) {
+            F8Log.e("Screensaver", "Error loading activation ping sound: ${e.message}")
+        }
+    }
+
+    val playActivationPing = {
+        if (activationPingSoundId != 0) {
+            try {
+                soundPool.play(activationPingSoundId, 1.0f, 1.0f, 1, 0, 1.0f)
+            } catch (e: Exception) {
+                F8Log.e("Screensaver", "Error playing activation ping: ${e.message}")
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            isSongOfTimePlaying = false
+            ocarinaTimeoutJob?.cancel()
+            activationJob?.cancel()
+            try {
+                ocarinaMediaPlayer?.stop()
+                ocarinaMediaPlayer?.release()
+            } catch (_: Exception) {}
+            ocarinaMediaPlayer = null
+            try {
+                soundPool.release()
+            } catch (_: Exception) {}
+        }
+    }
+
     var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var lastInteractionTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showExitHint by remember { mutableStateOf(false) }
@@ -178,14 +250,38 @@ fun TriforceScreensaverView(
 
     // Sacred Triforce Awakening Activation State
     var isActivationActive by remember { mutableStateOf(false) }
-    var activationStartTimeMs by remember { mutableLongStateOf(0L) }
     var wasFlung by remember { mutableStateOf(false) }
+
+    val startSacredTriforceAwakening: () -> Unit = {
+        activationJob?.cancel()
+        isActivationActive = true
+        playActivationPing()
+        activationJob = coroutineScope.launch {
+            activationAnimatable.snapTo(0f)
+            activationAnimatable.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 6200, easing = LinearEasing)
+            )
+            isActivationActive = false
+            hasOcarinaBeenTapped = false
+        }
+    }
 
     // Interactive launch impulse that scatters the stones across the screen with super bouncy physics
     fun triggerBounceAll() {
         lastInteractionTimeMs = System.currentTimeMillis()
         wasFlung = true
         isActivationActive = false
+        activationJob?.cancel()
+        ocarinaTimeoutJob?.cancel()
+        isOcarinaActive = false
+        hasOcarinaBeenTapped = false
+        isSongOfTimePlaying = false
+        try {
+            ocarinaMediaPlayer?.stop()
+            ocarinaMediaPlayer?.release()
+        } catch (_: Exception) {}
+        ocarinaMediaPlayer = null
 
         // Emerald shoots diagonally up-left
         stonesPhysics[0].launch(
@@ -225,9 +321,11 @@ fun TriforceScreensaverView(
                 .offset { burnInOffset }
         ) {
             // 1. Persistent Sacred 3D Spinning Triforces
+            // When Song of Time plays, smoothly fades in the authentic Song of Time background
+            // and gently fades back to the 3D spinning Triforces upon song completion!
             OcarinaSongBackgroundEffect(
-                isPlaying = false,
-                songId = "zeldas_lullaby",
+                isPlaying = isSongOfTimePlaying,
+                songId = "song_of_time",
                 currentNoteIndex = -1,
                 isDimmed = isIdleDimmed,
                 modifier = Modifier.fillMaxSize()
@@ -290,10 +388,31 @@ fun TriforceScreensaverView(
 
                                     // Check if all three stones were flung and have now all settled back home!
                                     val allSettled = stonesPhysics.all { !it.isBouncing && !it.isReturning && !it.isDragging }
-                                    if (wasFlung && allSettled && !isActivationActive) {
+                                    if (wasFlung && allSettled && !isActivationActive && !isOcarinaActive) {
                                         wasFlung = false
-                                        isActivationActive = true
-                                        activationStartTimeMs = frameTime
+                                        if (ocarinaStep) {
+                                            isOcarinaActive = true
+                                            hasOcarinaBeenTapped = false
+                                            isSongOfTimePlaying = false
+                                            ocarinaTimeoutJob?.cancel()
+                                            ocarinaTimeoutJob = coroutineScope.launch {
+                                                ocarinaAlphaAnimatable.snapTo(0f)
+                                                ocarinaAlphaAnimatable.animateTo(1f, tween(800))
+                                                delay(7000L)
+                                                if (!hasOcarinaBeenTapped) {
+                                                    ocarinaAlphaAnimatable.animateTo(0f, tween(800))
+                                                    isOcarinaActive = false
+                                                }
+                                            }
+                                        } else {
+                                            startSacredTriforceAwakening()
+                                        }
+                                    }
+
+                                    // If dimAfterMotion is enabled: keep screen bright while stones are moving, returning, or while the sacred awakening animation is active
+                                    val isOcarinaPlaying = isSongOfTimePlaying || ocarinaMediaPlayer?.isPlaying == true
+                                    if (dimAfterMotion && (!allSettled || wasFlung || isActivationActive || isOcarinaActive || isOcarinaPlaying)) {
+                                        lastInteractionTimeMs = System.currentTimeMillis()
                                     }
                                 }
                                 lastFrameTimeMs = frameTime
@@ -303,25 +422,20 @@ fun TriforceScreensaverView(
 
                     // 3. Super Premium Sacred Awakening: 3D Triforce with soft light beams above the stones
                     if (isActivationActive) {
-                        val activationTimeSec = ((lastFrameTimeMs - activationStartTimeMs) / 1000f).coerceAtLeast(0f)
+                        val activationTimeSec = activationAnimatable.value * 6.2f
                         val totalDuration = 6.2f
-                        val progress = (activationTimeSec / totalDuration).coerceIn(0f, 1f)
-                        if (progress >= 1.0f) {
-                            isActivationActive = false
-                        }
-
-                        // Intensity envelope: smooth ease-in, radiant peak with gentle pulse, graceful dissolve
+                        val fadeOutStart = totalDuration - 1.5f
                         val intensity = when {
                             activationTimeSec < 1.1f -> {
                                 val t = activationTimeSec / 1.1f
                                 t * t * (3f - 2f * t)
                             }
-                            activationTimeSec < 4.7f -> {
+                            activationTimeSec < fadeOutStart -> {
                                 val pulse = 1.0f + 0.06f * sin((activationTimeSec - 1.1f) * 3.5f)
                                 pulse.coerceIn(0.9f, 1.08f)
                             }
                             else -> {
-                                val t = (activationTimeSec - 4.7f) / (totalDuration - 4.7f)
+                                val t = ((activationTimeSec - fadeOutStart) / 1.5f).coerceIn(0f, 1f)
                                 ((1f - t) * (1f - t)).coerceIn(0f, 1f)
                             }
                         }
@@ -338,14 +452,89 @@ fun TriforceScreensaverView(
                                     scale = triforceScale,
                                     rotY = activationTimeSec * 0.70f,
                                     intensity = intensity,
-                                    timeSeconds = activationTimeSec,
-                                    stonePositions = listOf(
-                                        Offset(screenW * 0.5f + slotOffsetsX[0], screenH * 0.5f),
-                                        Offset(screenW * 0.5f + slotOffsetsX[1], screenH * 0.5f),
-                                        Offset(screenW * 0.5f + slotOffsetsX[2], screenH * 0.5f)
-                                    )
+                                    timeSeconds = activationTimeSec
                                 )
                             }
+                        }
+                    }
+
+                    // 4. Ocarina of Time Step (when enabled)
+                    if (isOcarinaActive) {
+                        val ocarinaAlpha = ocarinaAlphaAnimatable.value
+
+                        if (ocarinaAlpha > 0.005f) {
+                            val ocarinaSize = stoneSize * 1.35f
+                            // Show generously spaced UNDER the stones
+                            val ocarinaOffsetY = minOf(
+                                stonePx * 1.55f,
+                                (screenH * 0.5f) - (ocarinaSize.value * density * 0.65f)
+                            )
+
+                            val onOcarinaTapAction: () -> Unit = {
+                                if (!hasOcarinaBeenTapped) {
+                                    hasOcarinaBeenTapped = true
+                                    ocarinaTimeoutJob?.cancel()
+                                    lastInteractionTimeMs = System.currentTimeMillis()
+                                    try {
+                                        ocarinaMediaPlayer?.stop()
+                                        ocarinaMediaPlayer?.release()
+                                        val mp = MediaPlayer.create(context, R.raw.ocarina_song_song_of_time)
+                                        ocarinaMediaPlayer = mp
+                                        mp?.setOnCompletionListener {
+                                            isSongOfTimePlaying = false
+                                            try {
+                                                it.release()
+                                            } catch (_: Exception) {}
+                                            ocarinaMediaPlayer = null
+
+                                            // The song finishes, the Song of Time background fades off (~1.4s),
+                                            // and then the sacred Triforce animation starts with its ping sound!
+                                            coroutineScope.launch {
+                                                launch { ocarinaAlphaAnimatable.animateTo(0f, tween(1200)) }
+                                                delay(1400L)
+                                                isOcarinaActive = false
+                                                startSacredTriforceAwakening()
+                                            }
+                                        }
+                                        mp?.start()
+                                        isSongOfTimePlaying = true
+                                    } catch (e: Exception) {
+                                        F8Log.e("Screensaver", "Error playing Song of Time: ${e.message}")
+                                        isSongOfTimePlaying = false
+                                        isOcarinaActive = false
+                                        startSacredTriforceAwakening()
+                                    }
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // 3D Floating Ocarina of Time under the stones with glowing spotlight
+                                OcarinaOfTime3D(
+                                    ocarinaSize = ocarinaSize,
+                                    timeSeconds = timeSeconds,
+                                    alpha = ocarinaAlpha,
+                                    density = density,
+                                    onTap = onOcarinaTapAction,
+                                    modifier = Modifier.offset { IntOffset(0, ocarinaOffsetY.roundToInt()) }
+                                )
+                            }
+                        }
+                    }
+
+                    val onStoneDragStartAction = {
+                        if (isOcarinaActive || isSongOfTimePlaying) {
+                            isOcarinaActive = false
+                            hasOcarinaBeenTapped = false
+                            isSongOfTimePlaying = false
+                            ocarinaTimeoutJob?.cancel()
+                            try {
+                                ocarinaMediaPlayer?.stop()
+                                ocarinaMediaPlayer?.release()
+                            } catch (_: Exception) {}
+                            ocarinaMediaPlayer = null
                         }
                     }
 
@@ -371,7 +560,8 @@ fun TriforceScreensaverView(
                                 triggerBounceAll()
                                 selectedStoneName = "Kokiri's Emerald · Spiritual Stone of the Forest"
                             },
-                            onFling = { wasFlung = true }
+                            onFling = { wasFlung = true },
+                            onDragStart = onStoneDragStartAction
                         )
 
                         // 2. Center: Goron's Ruby (Fire)
@@ -391,7 +581,8 @@ fun TriforceScreensaverView(
                                 triggerBounceAll()
                                 selectedStoneName = "Goron's Ruby · Spiritual Stone of Fire"
                             },
-                            onFling = { wasFlung = true }
+                            onFling = { wasFlung = true },
+                            onDragStart = onStoneDragStartAction
                         )
 
                         // 3. Right: Zora's Sapphire (Water)
@@ -411,7 +602,8 @@ fun TriforceScreensaverView(
                                 triggerBounceAll()
                                 selectedStoneName = "Zora's Sapphire · Spiritual Stone of Water"
                             },
-                            onFling = { wasFlung = true }
+                            onFling = { wasFlung = true },
+                            onDragStart = onStoneDragStartAction
                         )
                     }
                 }
@@ -589,6 +781,98 @@ private class StonePhysicsState {
 }
 
 /**
+ * Authentic 3D Floating Ocarina of Time Model with perspective projection,
+ * harmonic bobbing, royal blue/gold bloom aura, and tightly wrapped specular sheen.
+ */
+@Composable
+private fun OcarinaOfTime3D(
+    ocarinaSize: Dp,
+    timeSeconds: Float,
+    alpha: Float,
+    density: Float,
+    onTap: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bobY = (sin(timeSeconds * 1.6f) * 6.0).toFloat()
+    val rotY = sin(timeSeconds * 0.9f) * 14f
+    val rotX = cos(timeSeconds * 0.7f) * 8f - 4f
+    val rotZ = sin(timeSeconds * 0.5f) * 6f - 8f
+    val depthScale = 1.0f + sin(timeSeconds * 1.2f) * 0.03f
+    val gleamOffset = ((sin(timeSeconds * 1.1f) * 0.5f + 0.5f)).coerceIn(0.05f, 0.95f)
+
+    Box(
+        modifier = modifier
+            .size(ocarinaSize + 28.dp)
+            .offset { IntOffset(0, (bobY * density).roundToInt()) }
+            .graphicsLayer { this.alpha = alpha }
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onTap() })
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        // 1. Volumetric Royal Blue & Golden Divine Bloom Aura
+        Box(
+            modifier = Modifier
+                .size(ocarinaSize * 1.35f)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF2979FF).copy(alpha = 0.40f * alpha),
+                            Color(0xFFFFD700).copy(alpha = 0.20f * alpha),
+                            Color.Transparent
+                        )
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        // 2. Authentic 3D Game Model with Specular Light Gleam (Masked strictly to ocarina alpha)
+        Box(
+            modifier = Modifier
+                .size(ocarinaSize)
+                .graphicsLayer {
+                    this.cameraDistance = 8f * density
+                    this.rotationY = rotY
+                    this.rotationX = rotX
+                    this.rotationZ = rotZ
+                    this.scaleX = depthScale
+                    this.scaleY = depthScale
+                    this.compositingStrategy = CompositingStrategy.Offscreen
+                }
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ocarina_of_time_model),
+                contentDescription = "Ocarina of Time",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Dynamic Specular Light Gleam across glazed ceramic surface
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val startX = (gleamOffset - 0.25f) * w * 1.6f
+                val endX = (gleamOffset + 0.25f) * w * 1.6f
+
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = 0.45f),
+                            Color(0xFFFFF9C4).copy(alpha = 0.35f),
+                            Color.Transparent
+                        ),
+                        start = Offset(startX, 0f),
+                        end = Offset(endX, h)
+                    ),
+                    blendMode = BlendMode.SrcAtop
+                )
+            }
+        }
+    }
+}
+
+/**
  * Authentic 3D Floating Spiritual Stone with perspective projection,
  * harmonic bobbing, multi-axis 3D tilt, tightly wrapped specular sheen, and dynamic bounce physics.
  * Note: Dark shadow dots have been completely removed as requested!
@@ -607,7 +891,8 @@ private fun SpiritualStone3D(
     physics: StonePhysicsState,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onFling: () -> Unit
+    onFling: () -> Unit,
+    onDragStart: () -> Unit = {}
 ) {
     // 3D Harmonic floating physics
     val bobY = (sin(timeSeconds * 1.5 + phase) * 8.0).toFloat()
@@ -636,6 +921,7 @@ private fun SpiritualStone3D(
                 var lastDeltaY = 0f
                 detectDragGestures(
                     onDragStart = {
+                        onDragStart()
                         physics.isDragging = true
                         physics.isBouncing = false
                         physics.isReturning = false
@@ -755,7 +1041,6 @@ private fun SpiritualStone3D(
 /**
  * Super Premium Cinematic Ocarina of Time Sacred Activation Sequence.
  * Renders the divine awakening of the sacred 3D Triforce above the spiritual stones:
- * - Three elemental convergence rays (Emerald green, Ruby fire, Sapphire water) feeding into the apex.
  * - 12 soft, volumetric heavenly God Rays rotating in 360 degrees.
  * - Luminous sacred sunburst flare with multi-tier corona bloom.
  * - Pristine 3D spinning golden Triforce with beveled edges and specular facet shines.
@@ -767,58 +1052,11 @@ private fun DrawScope.drawSacredActivationSequence(
     scale: Float,
     rotY: Float,
     intensity: Float,
-    timeSeconds: Float,
-    stonePositions: List<Offset>
+    timeSeconds: Float
 ) {
     val maxRadius = max(size.width, size.height) * 0.75f
 
-    // 1. Three Elemental Convergence Beams from the three stones up to the sacred Triforce
-    val elementalColors = listOf(
-        Pair(Color(0xFF00E676), Color(0xFFB9F6CA)), // Emerald (Forest)
-        Pair(Color(0xFFFF1744), Color(0xFFFF8A80)), // Ruby (Fire)
-        Pair(Color(0xFF00B0FF), Color(0xFF80D8FF))  // Sapphire (Water)
-    )
-
-    for (i in 0..2) {
-        val stonePos = stonePositions[i]
-        val (baseColor, glowColor) = elementalColors[i]
-
-        // Outer soft glow line
-        drawLine(
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    baseColor.copy(alpha = 0.55f * intensity),
-                    glowColor.copy(alpha = 0.75f * intensity),
-                    Color(0xFFFFF9C4).copy(alpha = 0.85f * intensity)
-                ),
-                start = stonePos,
-                end = Offset(cx, cy)
-            ),
-            start = stonePos,
-            end = Offset(cx, cy),
-            strokeWidth = 6.5f,
-            cap = StrokeCap.Round
-        )
-
-        // Inner bright laser core
-        drawLine(
-            color = Color.White.copy(alpha = 0.90f * intensity),
-            start = stonePos,
-            end = Offset(cx, cy),
-            strokeWidth = 2.0f,
-            cap = StrokeCap.Round
-        )
-
-        // Resonant energy ring around stone
-        drawCircle(
-            color = glowColor.copy(alpha = 0.40f * intensity),
-            radius = 28f + sin(timeSeconds * 6f + i * 2f) * 6f,
-            center = stonePos,
-            style = Stroke(width = 2.5f)
-        )
-    }
-
-    // 2. 12 Volumetric Heavenly God Rays (Soft beams of light sweeping outward)
+    // 1. 12 Volumetric Heavenly God Rays (Soft beams of light sweeping outward)
     val numBeams = 12
     val beamRotation = timeSeconds * 18.0 // 18 deg/sec smooth rotation
     val beamLength = maxRadius * 0.95f

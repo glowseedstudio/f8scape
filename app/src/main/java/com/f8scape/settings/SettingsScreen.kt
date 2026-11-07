@@ -1358,6 +1358,54 @@ fun SettingsScreen(
                                 colors = defaultSwitchColors
                             )
                         }
+
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 10.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Keep Bright During Motion", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                                Text(
+                                    "Only start 10s dim timer after stones stop moving and awakening finishes",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                            }
+                            Switch(
+                                checked = preferences.screensaverDimAfterMotion,
+                                onCheckedChange = { coroutineScope.launch { preferencesRepository.setScreensaverDimAfterMotion(it) } },
+                                colors = defaultSwitchColors
+                            )
+                        }
+
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 10.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Ocarina of Time Sequence", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                                Text(
+                                    "Summon 3D Ocarina after stones settle; tap to play Song of Time & awaken Triforce",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                            }
+                            Switch(
+                                checked = preferences.screensaverOcarinaStep,
+                                onCheckedChange = { coroutineScope.launch { preferencesRepository.setScreensaverOcarinaStep(it) } },
+                                colors = defaultSwitchColors
+                            )
+                        }
                     }
 
                     HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 14.dp))

@@ -47,6 +47,8 @@ data class UserPreferences(
     val enableOcarinaPage: Boolean = true,
     val enableScreensaverPage: Boolean = true,
     val screensaverShowStones: Boolean = true,
+    val screensaverDimAfterMotion: Boolean = true,
+    val screensaverOcarinaStep: Boolean = false,
     val photoFrameSourceType: String = "PHOTOS", // "PHOTOS" or "FOLDER"
     val photoFrameSelectedUrisSerialized: String = "",
     val photoFrameFolderUri: String = "",
@@ -98,6 +100,8 @@ class PreferencesRepository(
         val ENABLE_OCARINA_PAGE = booleanPreferencesKey("enable_ocarina_page")
         val ENABLE_SCREENSAVER_PAGE = booleanPreferencesKey("enable_screensaver_page")
         val SCREENSAVER_SHOW_STONES = booleanPreferencesKey("screensaver_show_stones")
+        val SCREENSAVER_DIM_AFTER_MOTION = booleanPreferencesKey("screensaver_dim_after_motion")
+        val SCREENSAVER_OCARINA_STEP = booleanPreferencesKey("screensaver_ocarina_step")
         val PHOTO_FRAME_SOURCE_TYPE = stringPreferencesKey("photo_frame_source_type")
         val PHOTO_FRAME_SELECTED_URIS = stringPreferencesKey("photo_frame_selected_uris")
         val PHOTO_FRAME_FOLDER_URI = stringPreferencesKey("photo_frame_folder_uri")
@@ -155,6 +159,8 @@ class PreferencesRepository(
                 enableOcarinaPage = preferences[PreferencesKeys.ENABLE_OCARINA_PAGE] ?: true,
                 enableScreensaverPage = preferences[PreferencesKeys.ENABLE_SCREENSAVER_PAGE] ?: true,
                 screensaverShowStones = preferences[PreferencesKeys.SCREENSAVER_SHOW_STONES] ?: true,
+                screensaverDimAfterMotion = preferences[PreferencesKeys.SCREENSAVER_DIM_AFTER_MOTION] ?: true,
+                screensaverOcarinaStep = preferences[PreferencesKeys.SCREENSAVER_OCARINA_STEP] ?: false,
                 photoFrameSourceType = preferences[PreferencesKeys.PHOTO_FRAME_SOURCE_TYPE] ?: "PHOTOS",
                 photoFrameSelectedUrisSerialized = preferences[PreferencesKeys.PHOTO_FRAME_SELECTED_URIS] ?: "",
                 photoFrameFolderUri = preferences[PreferencesKeys.PHOTO_FRAME_FOLDER_URI] ?: "",
@@ -362,6 +368,18 @@ class PreferencesRepository(
     suspend fun setScreensaverShowStones(show: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SCREENSAVER_SHOW_STONES] = show
+        }
+    }
+
+    suspend fun setScreensaverDimAfterMotion(dimAfterMotion: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SCREENSAVER_DIM_AFTER_MOTION] = dimAfterMotion
+        }
+    }
+
+    suspend fun setScreensaverOcarinaStep(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SCREENSAVER_OCARINA_STEP] = enabled
         }
     }
 
